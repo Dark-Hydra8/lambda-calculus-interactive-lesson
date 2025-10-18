@@ -1,4 +1,4 @@
-### lambda-calculus-interactive-lesson
+# lambda-calculus-interactive-lesson
 This project serves as an interactive lesson in lambda calculus
 
 # Getting Started with Create React App
