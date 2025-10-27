@@ -19,7 +19,7 @@ class GenericLexerError extends Error {
 	
 	public constructor(malformed_str: string, index: number, message: string | null = null) {
 		if (message === null) {
-			message = `Could not lex this string: "${error_str}"`;
+			message = `Could not lex this string: "${malformed_str}"`;
 		}
 		super(message);
 		this.name = "GenericLexerError";
@@ -40,7 +40,7 @@ function next_lexeme(str: string, regex: RegExp, start: number) : string | null 
 }
 
 
-class GenericToken<TokenTypeType extends string | number | symbol> {
+export class GenericToken<TokenTypeType extends string | number | symbol> {
 	public token_type: TokenTypeType;
 	public lexeme: string;
 
@@ -58,12 +58,12 @@ class GenericToken<TokenTypeType extends string | number | symbol> {
 	}
 }
 
-class GenericLexer<TokenTypeType extends string | number | symbol> {
+export class GenericLexer<TokenTypeType extends string | number | symbol> {
 	protected token_index: number;
 	protected str_index: number;
 	protected str: string;
 	protected token_types: Record<TokenTypeType, RegExp>;
-	protected tokens: Token[];
+	protected tokens: GenericToken<TokenTypeType>[];
 
 	public constructor(str: string, token_types: Record<TokenTypeType, RegExp>) {
 		this.str = str;
@@ -73,7 +73,7 @@ class GenericLexer<TokenTypeType extends string | number | symbol> {
 		this.tokens = [];
 	}
 
-	private lex_token() : Token | null {
+	private lex_token() : GenericToken<TokenTypeType> | null {
 		// console.log(`this.str_start ${this.str_index}`);
 		let max_token = null;
 
@@ -85,11 +85,11 @@ class GenericLexer<TokenTypeType extends string | number | symbol> {
 			let lexeme = next_lexeme(this.str, this.token_types[token_type], this.str_index);
 			if (lexeme !== null && (max_token === null
 			    || (lexeme !== null && lexeme.length > max_token.lexeme.length))) {
-				max_token = new GenericToken<TokenType>(token_type, lexeme);
+				max_token = new GenericToken<TokenTypeType>(token_type, lexeme);
 			}
 		}
 		if (max_token === null) {
-			throw new GenericLexerError(this.str.substring(this.str_index, 30 + this.str_index));
+			throw new GenericLexerError(this.str.substring(this.str_index, 30 + this.str_index), this.str_index);
 		}
 
 		this.tokens.push(max_token);
@@ -99,7 +99,7 @@ class GenericLexer<TokenTypeType extends string | number | symbol> {
 		return max_token;
 	}
 
-	public pop() : TokenType | null {
+	public pop() : GenericToken<TokenTypeType> | null {
 		let token = this.peek();
 		if (token !== null) {
 			this.token_index++;
@@ -107,7 +107,7 @@ class GenericLexer<TokenTypeType extends string | number | symbol> {
 		return token;
 	}
 	
-	public peek(token_index: number = 0) : TokenType | null {
+	public peek(token_index: number = 0) : GenericToken<TokenTypeType> | null {
 		token_index += this.token_index;
 		while (this.tokens.length <= token_index && this.lex_token() !== null) {}
 		if (this.tokens.length <= token_index) {
@@ -138,25 +138,23 @@ class GenericLexer<TokenTypeType extends string | number | symbol> {
 }
 
 export class LambdaSyntaxError extends GenericSyntaxError<TokenType> {
-	protected found: TokenType;
-	protected expected: TokenType[]; 
 	protected line_number: number;
 
-	public constructor(found: TokenType, expected: TokenType[], line_number: number, message: string) {
+	public constructor(found: TokenType, expected: TokenType[], line_number: number, message: string | null = null) {
 		if (message === null) {
 			message = `Syntax error: found ${found}, but expected one of ${expected} on line ${line_number}`;
 		}
 		super(found, expected, message);
 		this.name = "LambdaSyntaxError";
+		this.line_number = line_number;
 	}
 }
 
 export class LambdaLexerError extends GenericLexerError {
 	public constructor(malformed_str: string, index: number, message: string | null = null) {
 		if (message === null) {
-			message = `Could not lex this string: "${error_str}"`;
+			message = `Could not lex this string: "${malformed_str}"`;
 		}
-		message = 
 		super(malformed_str, index, message);
 		this.name = "LambdaLexerError";
 	}
@@ -186,9 +184,13 @@ export class LambdaToken extends GenericToken<TokenType> {
 	public static from_generic_token(token: GenericToken<TokenType>, line_number: number) : LambdaToken {
 		return new LambdaToken(token.token_type, token.lexeme, line_number);
 	}
+
+	public get_line_number() : number {
+		return this.line_number;
+	}
 }
 
-export class LambdaLexer extends GenericLexer<LambdaToken, TokenType> {
+export class LambdaLexer extends GenericLexer<TokenType> {
 	protected current_line_number: number;
 
 	public constructor(str: string) {
@@ -228,7 +230,7 @@ export class LambdaLexer extends GenericLexer<LambdaToken, TokenType> {
 	private peek_with_index(token_index: number = 0) : {token: LambdaToken, token_index: number} {
 		let super_index = 0;
 		let this_index = 0;
-		let line_number = this.line_number;
+		let line_number = this.current_line_number;
 		while (true) {
 			let token = super.peek(super_index);
 			if (token === null) {
@@ -244,7 +246,10 @@ export class LambdaLexer extends GenericLexer<LambdaToken, TokenType> {
 				super_index++;
 			} else {
 				// console.log(`this_index=${this_index} super_index=${super_index} token=${token}`);
-				return {token: LambdaToken.from_generic_token(token, line_number), token_index: super_index};
+				return {
+					token: LambdaToken.from_generic_token(token, line_number),
+					token_index: super_index,
+				};
 			}
 		}
 	}
@@ -255,9 +260,17 @@ export class LambdaLexer extends GenericLexer<LambdaToken, TokenType> {
 
 	public pop() : LambdaToken {
 		let result = this.peek_with_index();
-		// console.log(`this.token_index (${this.token_index}) += result.token_index (${result.token_index})`);
 		this.token_index += result.token_index + 1;
 		return result.token;
+	}
+
+	public get_current_line_number() : number {
+		return this.current_line_number;
+	}
+
+	public expect(token_type: TokenType) : LambdaToken {
+		let token = super.expect(token_type);
+		return LambdaToken.from_generic_token(token, this.current_line_number);
 	}
 }
 
