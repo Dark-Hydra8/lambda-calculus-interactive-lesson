@@ -12,7 +12,10 @@ export class Parser {
 
 	public parse_input() : (LambdaObject | Assignment)[] {
 		// console.log("parse_input");
-		// lines end_of_input | lines new_lines end_of_input 
+		// lines end_of_input | new_lines lines end_of_input 
+		if (this.type_next(TokenType.new_line)) {
+			this.parse_new_lines();
+		}
 		let objects = this.parse_lines();
 		if (this.type_next(TokenType.new_line)) {
 			this.parse_new_lines();
@@ -24,17 +27,11 @@ export class Parser {
 
 	public parse_lines(objects: (LambdaObject | Assignment)[] = []) : (LambdaObject | Assignment)[] {
 		// console.log("parse_lines");
-		// line new_line lines | line
+		// line lines | line
 		let obj = this.parse_line();
 		objects.push(obj);
-		if (this.type_next(TokenType.new_line)) {
-			this.parse_lines(objects);
-		} else if (!this.type_next(TokenType.end_of_input)) {
-			throw new LambdaSyntaxError(
-				this.peek().token_type,
-				[TokenType.end_of_input, TokenType.new_line],
-				this.lexer.get_current_line_number()
-			);
+		if (!this.type_next(TokenType.end_of_input)) {
+			this.parse_lines(objects)
 		}
 		// console.log("return parse_lines");
 		return objects;
@@ -42,12 +39,15 @@ export class Parser {
 
 	public parse_line() : LambdaObject | Assignment {
 		// console.log("parse_line");
-		// assignment | expression
+		// assignment | expression | assignment new_lines | expression new_lines
 		let line;
-		if (this.type_next(TokenType.variable) && this.type_next(TokenType.equals)) {
+		if (this.type_next(TokenType.variable) && this.peek(1).is_type(TokenType.equals)) {
 			line = this.parse_assignment();
 		} else {
-			line = this.parse_expression();
+			line = this.parse_expression() as LambdaObject;
+		}
+		if (this.type_next(TokenType.new_line)) {
+			this.parse_new_lines();
 		}
 		// console.log("return parse_line");
 		return line;
@@ -58,25 +58,32 @@ export class Parser {
 		// variable = application
 		let variable = this.parse_variable();
 		this.expect(TokenType.equals);
-		let value = this.parse_expression();
+		let value = this.parse_expression() as LambdaObject;
 		// console.log("return parse_assignment");
 		return new Assignment(variable, value);
 	}
 
-	public parse_expression() : LambdaObject {
+	public parse_expression(exprs: LambdaObject[] = []) : LambdaObject | null {
 		// console.log("parse_expression");
 		// term | term expression
-		let expression: LambdaObject = this.parse_term();
-		assert(expression === undefined);
-		assert(expression !== undefined);
+		let is_root = exprs.length === 0;
+		exprs.push(this.parse_term());
 		let token = this.peek();
 		if (token.is_type(TokenType.variable)
 		   	|| token.is_type(TokenType.number)
-		   	|| token.is_type(TokenType.lparen)) {
-			expression = new Application(expression, this.parse_expression());
+		   	|| token.is_type(TokenType.lparen)
+		   	|| token.is_type(TokenType.lambda)) {
+			this.parse_expression(exprs);
 		}
 		// console.log("return parse_expression");
-		return expression;
+		if (is_root) {
+			let expr = exprs[0];
+			for (let i = 1; i < exprs.length; i++) {
+				expr = new Application(expr, exprs[i]);
+			}
+			return expr;
+		}
+		return null;
 	}
 
 	public parse_term() : LambdaObject {
@@ -90,7 +97,7 @@ export class Parser {
 			}
 			case TokenType.lparen: {
 				this.expect(TokenType.lparen);
-				term = this.parse_expression();
+				term = this.parse_expression() as LambdaObject;
 				this.expect(TokenType.rparen);
 				break;
 			}
@@ -134,7 +141,7 @@ export class Parser {
 		this.expect(TokenType.lambda);
 		let parameter = this.parse_variable();
 		this.expect(TokenType.dot);
-		let body = this.parse_expression();
+		let body = this.parse_expression() as LambdaObject;
 		// console.log("return parse_function");
 		return new Lambda(parameter, body);
 	}
@@ -150,8 +157,9 @@ export class Parser {
 
 	public parse_number() : Lambda {
 		// console.log("parse_number");
-		// number
-		throw new Error("parse_number not implemented");
+		let num = parseInt(this.expect(TokenType.number).lexeme);
+		// console.log("return parse_number");
+		return load_number(num);
 	}
 
 	private expect(token_type: TokenType) : LambdaToken {
@@ -177,3 +185,10 @@ export class Parser {
 	}
 }
 
+function load_number(num: number) : Lambda {
+	let n: Variable | Application = new Variable("s");
+	for (let i = 0; i < num; i++) {
+		n = new Application(new Variable("t"), n);
+	}
+	return new Lambda(new Variable("t"), new Lambda(new Variable("s"), n));
+}

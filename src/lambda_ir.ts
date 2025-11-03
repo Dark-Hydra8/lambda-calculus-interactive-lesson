@@ -10,24 +10,73 @@ function sets_eq<T>(set1: Set<T>, set2: Set<T>): boolean {
 	return true;
 }
 
+class VariableName {
+	public name: number | string;
+
+	public constructor(name: number | string) {
+		this.name = name;
+	}
+
+	public eq(other: VariableName) : boolean {
+		return this.name === other.name;
+	}
+}
+
+
+
 class VariableMapping {
-	protected a_to_b: Record<string, string>;
-	protected b_to_a: Record<string, string>;
+	protected sym_to_name_left: Record<string, VariableName[]>;
+	protected sym_to_name_right: Record<string, VariableName[]>;
+	protected lambda_funcs: number;
 
 	public constructor() {
-		this.a_to_b = {};
-		this.b_to_a = {};
+		this.sym_to_name_left = {};
+		this.sym_to_name_right = {};
+		this.lambda_funcs = 0;
 	}
 
-	public copy() : VariableMapping {
-		let copy = new VariableMapping();
-		copy.a_to_b = {...this.a_to_b};
-		copy.b_to_a = {...this.b_to_a};
-		return copy;
+	public ingest(left_symbol: string, right_symbol: string) : boolean {
+		let left_names = this.sym_to_name_left[left_symbol];
+		let right_names = this.sym_to_name_right[right_symbol];
+		return left_names[left_names.length - 1].eq(right_names[right_names.length - 1]);
 	}
 
-	public ingest(a: LambdaObject, b: LambdaObject) : boolean {
-		return false;
+	public enter_lambda(left_lambda: Lambda, right_lambda: Lambda) : void {
+		let name = new VariableName(this.lambda_funcs);
+		this.lambda_funcs++;
+
+		let left_symbol = (left_lambda.get_left() as Variable).get_symbol();
+		if (left_symbol in this.sym_to_name_left) {
+			this.sym_to_name_left[left_symbol].push(name);
+		} else {
+			this.sym_to_name_left[left_symbol] = [name];
+		}
+
+		let right_symbol = (right_lambda.get_left() as Variable).get_symbol();
+		if (right_symbol in this.sym_to_name_right) {
+			this.sym_to_name_right[right_symbol].push(name);
+		} else {
+			this.sym_to_name_right[right_symbol] = [name];
+		}
+	}
+
+	public exit_lambda(left_lambda: Lambda, right_lambda: Lambda) : void {
+		let left_symbol = (left_lambda.get_left() as Variable).get_symbol();
+		this.sym_to_name_left[left_symbol].pop();
+		let right_symbol = (right_lambda.get_left() as Variable).get_symbol();
+		this.sym_to_name_right[right_symbol].pop();
+	}
+
+	public same(left: string, right: string) : boolean {
+		if (!(left in this.sym_to_name_left) || this.sym_to_name_left[left].length === 0) {
+			this.sym_to_name_left[left] = [new VariableName(left)];
+		}
+		if (!(right in this.sym_to_name_right) || this.sym_to_name_right[right].length === 0) {
+			this.sym_to_name_right[right] = [new VariableName(right)];
+		}
+		let left_names = this.sym_to_name_left[left];
+		let right_names = this.sym_to_name_right[right];
+		return left_names[left_names.length - 1].eq(right_names[right_names.length - 1]);
 	}
 }
 
@@ -56,7 +105,9 @@ export abstract class LambdaObject {
 	public abstract copy() : LambdaObject;
 	public abstract norm_ord_redex() : Application | null;
 	public abstract replace(variable: Variable, replacement: LambdaObject) : void;
-	public abstract eq(other: LambdaObject, var_mapping: Record<string, string>) : boolean;
+	public abstract eq(other: LambdaObject, var_mapping: VariableMapping | null) : boolean;
+	public abstract toString() : string;
+	public abstract repr() : string;
 }
 
 export abstract class LambdaTree extends LambdaObject {
@@ -116,6 +167,14 @@ export abstract class LambdaTree extends LambdaObject {
 			this.parent.reload_free_vars();
 		}
 	}
+
+	public get_left() : LambdaObject {
+		return this.left;
+	}
+
+	public get_right() : LambdaObject {
+		return this.right;
+	}
 }
 
 export class Lambda extends LambdaTree {
@@ -134,7 +193,7 @@ export class Lambda extends LambdaTree {
 	}
 
 	public replace(variable: Variable, replacement: LambdaObject) : void {
-		if (variable !== this.left) {
+		if (variable !== this.left && this.get_free_vars().has(variable.get_symbol())) {
 			let parameter = (this.left as Variable).get_symbol();
 			if (replacement.get_free_vars().has(parameter)) {
 				let new_parameter = parameter;
@@ -165,28 +224,31 @@ export class Lambda extends LambdaTree {
 		return `λ${this.left}.${this.right}`
 	}
 
+	public repr() : string {
+		return `(λ${this.left.repr()}.${this.right.repr()})`;
+	}
+
 	public replace_child(old_body: LambdaObject, new_body: LambdaObject) : void {
 		if (this.right === old_body) {
 			this.right = new_body;
 			new_body.set_parent(this);
-		} else {
-			throw new Error("old body was not found");
+		// } else {
+		//	throw new Error("old body was not found");
 		}
 	}
 
-	public eq(other: LambdaObject, var_mapping: Record<string, string>) {
+	public eq(other: LambdaObject, var_mapping: VariableMapping | null) : boolean {
 		if (!(other instanceof Lambda)) {
 			return false;
 		}
-
-		let this_symbol = (this.left as Variable).get_symbol();
-		let other_symbol = (other.left as Variable).get_symbol();
-		if (!(this_symbol in var_mapping)) {
-			var_mapping[this_symbol] = other_symbol;
-		} else if (this_symbol !== other_symbol) {
-			return false;
+		if (var_mapping === null) {
+			var_mapping = new VariableMapping();
 		}
-		return this.right.eq(other.right, var_mapping);
+
+		var_mapping.enter_lambda(this, other);
+		let result = this.right.eq(other.right, var_mapping);
+		var_mapping.exit_lambda(this, other);
+		return result;
 	}
 }
 
@@ -247,12 +309,17 @@ export class Application extends LambdaTree {
 		}
 
 		let right;
-		if (this.right instanceof Application) {
+		if (this.right instanceof Application
+		    || this.right instanceof Lambda && this.parent instanceof Application && this.parent.left === this) {
 			right = `(${this.right})`;
 		} else {
 			right = String(this.right);
 		}
 		return `${left} ${right}`;
+	}
+
+	public repr() : string {
+		return `(${this.left.repr()} ${this.right.repr()})`;
 	}
 
 	public replace_child(old_child: LambdaObject, new_child: LambdaObject) : void {
@@ -267,9 +334,12 @@ export class Application extends LambdaTree {
 		}
 	}
 	
-	public eq(other: LambdaObject, var_mapping: Record<string, string>) {
+	public eq(other: LambdaObject, var_mapping: VariableMapping | null) : boolean {
 		if (!(other instanceof Application)) {
 			return false;
+		}
+		if (var_mapping === null) {
+			var_mapping = new VariableMapping();
 		}
 		return this.right.eq(other.right, var_mapping) && this.left.eq(other.left, var_mapping);
 	}
@@ -290,6 +360,10 @@ export class Variable extends LambdaObject {
 	public toString() : string {
 		return this.symbol;
 	}
+
+	public repr() : string {
+		return this.symbol;
+	}
 	
 	public norm_ord_redex() : Application | null {
 		return null;
@@ -301,29 +375,34 @@ export class Variable extends LambdaObject {
 		return this.symbol;
 	}
 	
-	public eq(other: LambdaObject, var_mapping: Record<string, string>) {
+	public eq(other: LambdaObject, var_mapping: VariableMapping | null) : boolean {
 		if (!(other instanceof Variable)) {
 			return false;
 		}
-		if (this.symbol in var_mapping) {
-			return var_mapping[this.symbol] === other.symbol;
-		} else {
-			var_mapping[this.symbol] = other.symbol;
-			return true;
+		if (var_mapping === null) {
+			var_mapping = new VariableMapping();
 		}
+		return var_mapping.same(this.get_symbol(), other.get_symbol());
 	}
 }
 
 export class Assignment {
-	public variable: Variable;
+	public name: Variable;
 	public value: LambdaObject;
 
-	public constructor(variable: Variable, value: LambdaObject) {
-		this.variable = variable;
+	public constructor(name: Variable, value: LambdaObject) {
+		this.name = name;
 		this.value = value;
 	}
 
 	public toString() : string {
-		return `${String(this.variable)} = ${String(this.value)}`;
+		return `${String(this.name)} = ${String(this.value)}`;
+	}
+
+	public eq(other: Assignment, var_mapping: VariableMapping | null) : boolean {
+		if (var_mapping === null) {
+			var_mapping = new VariableMapping();
+		}
+		return this.name.eq(other.name, var_mapping) && this.value.eq(other.value, var_mapping);
 	}
 }

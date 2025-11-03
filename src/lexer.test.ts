@@ -42,7 +42,7 @@ test("test the peek, pop, expect functions of GenericLexer", () => {
 				break;
 			}
 			case 2: { // expect
-				let token = lexer.expect(expected_tokens[token_index].token_type);
+				let token = lexer.expect(expected_tokens[token_index].token_type) as GenericToken<string>;
 				expect(token.lexeme).toEqual(expected_tokens[token_index].lexeme);
 				expect(token.token_type).toEqual(expected_tokens[token_index].token_type);
 				token_index++;

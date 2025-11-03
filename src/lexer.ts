@@ -1,15 +1,29 @@
 class GenericSyntaxError<TokenTypeType> extends Error {
-	protected found: TokenTypeType;
-	protected expected: TokenTypeType[]; 
+	protected found: TokenTypeType | null;
+	protected expected: (TokenTypeType | null)[]; 
 
-	public constructor(found: TokenTypeType, expected: TokenTypeType[], message: string | null = null) {
+	public constructor(found: TokenTypeType | null, expected: (TokenTypeType | null)[], message: string | null = null) {
 		if (message === null) {
-			message = `Syntax error: found ${found}, but expected one of ${expected}`;
+			let found_str;
+			if (found === null) {
+				found_str = "end of input";
+			} else {
+				found_str = String(found);
+			}
+			message = `Syntax error: found ${found_str}, but expected one of ${expected}`;
 		}
 		super(message);
 		this.name = "GenericSyntaxError";
 		this.found = found;
 		this.expected = expected;
+	}
+
+	public get_found() : TokenTypeType | null {
+		return this.found;
+	}
+	
+	public get_expected() : (TokenTypeType | null)[] {
+		return this.expected;
 	}
 }
 
@@ -118,11 +132,16 @@ export class GenericLexer<TokenTypeType extends string | number | symbol> {
 		}
 	}
 
-	public expect(token_type: TokenTypeType) : GenericToken<TokenTypeType> {
+	public expect(token_type: TokenTypeType | null) : GenericToken<TokenTypeType> | null {
 		let token = this.pop();
-		if (token === null || !token.is_type(token_type)) {
-			// console.log(this.tokens);
-			throw new SyntaxError(`expected ${String(token_type)} but got ${token}`);
+		let popped_type: TokenTypeType | null;
+		if (token === null) {
+			popped_type = null;
+		} else {
+			popped_type = token.token_type;
+		}
+		if (popped_type !== token_type) {
+			throw new GenericSyntaxError<TokenTypeType>(popped_type, [token_type]);
 		}
 		return token;
 	}
@@ -147,6 +166,26 @@ export class LambdaSyntaxError extends GenericSyntaxError<TokenType> {
 		super(found, expected, message);
 		this.name = "LambdaSyntaxError";
 		this.line_number = line_number;
+	}
+
+	public static from_generic_syntax_error(error: GenericSyntaxError<TokenType>, line_number: number, message: string | null = null) : LambdaSyntaxError {
+		let found = error.get_found();
+		if (found === null) {
+			found = TokenType.end_of_input;
+		}
+		let expected = [];
+		for (let exp of error.get_expected()) {
+			if (exp === null) {
+				exp = TokenType.end_of_input;
+			}
+			expected.push(exp);
+		}
+
+		return new LambdaSyntaxError(found, expected, line_number, message);
+	}
+
+	public get_line_number() : number {
+		return this.line_number;
 	}
 }
 
@@ -205,7 +244,7 @@ export class LambdaLexer extends GenericLexer<TokenType> {
 				[TokenType.variable]: /[a-zA-Z][a-zA-Z_0-9]*/y,
 				[TokenType.whitespace]: /[ \t]+/y,
 				[TokenType.new_line]: /\n/y,
-				[TokenType.number]: /[1-9][0-9]*/y,
+				[TokenType.number]: /([1-9][0-9]*)|0/y,
 				[TokenType.end_of_input]: /a^/y
 			}
 		);
@@ -261,6 +300,7 @@ export class LambdaLexer extends GenericLexer<TokenType> {
 	public pop() : LambdaToken {
 		let result = this.peek_with_index();
 		this.token_index += result.token_index + 1;
+		this.current_line_number = result.token.get_line_number();
 		return result.token;
 	}
 
@@ -269,8 +309,23 @@ export class LambdaLexer extends GenericLexer<TokenType> {
 	}
 
 	public expect(token_type: TokenType) : LambdaToken {
-		let token = super.expect(token_type);
-		return LambdaToken.from_generic_token(token, this.current_line_number);
+		let token;
+		try {
+			token = super.expect(token_type);
+		} catch (error) {
+			if (error instanceof GenericSyntaxError<TokenType>) {
+				throw LambdaSyntaxError.from_generic_syntax_error(error, this.current_line_number);
+			} else {
+				throw error;
+			}
+		}
+		let new_token;
+		if (token === null) {
+			new_token = new LambdaToken(TokenType.end_of_input, "", this.current_line_number);
+		} else {
+			new_token = LambdaToken.from_generic_token(token, this.current_line_number);
+		}
+		return new_token;
 	}
 }
 
