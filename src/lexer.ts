@@ -40,6 +40,14 @@ class GenericLexerError extends Error {
 		this.malformed_str = malformed_str;
 		this.index = index;
 	}
+
+	public get_malformed_str() : string {
+		return this.malformed_str;
+	}
+
+	public get_index() : number {
+		return this.index;
+	}
 }
 
 
@@ -197,6 +205,10 @@ export class LambdaLexerError extends GenericLexerError {
 		super(malformed_str, index, message);
 		this.name = "LambdaLexerError";
 	}
+
+	public static from_generic_error(error: GenericLexerError) : LambdaLexerError {
+		return new LambdaLexerError(error.get_malformed_str(), error.get_index());
+	}
 }
 
 export enum TokenType {
@@ -249,21 +261,6 @@ export class LambdaLexer extends GenericLexer<TokenType> {
 			}
 		);
 		this.current_line_number = 1;
-		/*
-		let new_tokens: LambdaToken[] = [];
-		let current_line_number = 1;
-		for (let i = 0; i < this.tokens.length; i++) {
-			let token = this.tokens[i];
-			if (token.is_type(TokenType.new_line)) {
-				current_line_number++;
-			}
-			if (!token.is_type(TokenType.whitespace)) {
-				token.set_line_number(current_line_number);
-				new_tokens.push(token);
-			}
-		}
-		this.tokens = new_tokens;
-	         */
 	}
 
 	private peek_with_index(token_index: number = 0) : {token: LambdaToken, token_index: number} {
@@ -271,7 +268,15 @@ export class LambdaLexer extends GenericLexer<TokenType> {
 		let this_index = 0;
 		let line_number = this.current_line_number;
 		while (true) {
-			let token = super.peek(super_index);
+			let token;
+			try {
+				token = super.peek(super_index);
+			} catch (error) {
+				if (error instanceof GenericLexerError) {
+					error = LambdaLexerError.from_generic_error(error);
+				}
+				throw error;
+			}
 			if (token === null) {
 				return {token: new LambdaToken(TokenType.end_of_input, "", line_number), token_index: super_index};
 			}

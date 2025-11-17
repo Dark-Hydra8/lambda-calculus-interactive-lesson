@@ -3,6 +3,7 @@ import './styles.css';
 import { LambdaObject, Variable, Application, Lambda } from './lambda_ir';
 import { Parser } from './parser';
 import { random_lambda } from './random_lambda';
+import { LambdaLexerError, LambdaSyntaxError } from './lexer';
 
 type Question = {
   question: LambdaObject;
@@ -60,7 +61,6 @@ function new_question() : LambdaObject {
     let l = norm.get_left() as Lambda;
     vari = l.get_parameter();
     body = l.get_body();
-    console.log(`Checking: ${norm}, has variable ${has_variable(body, vari)}`);
   } while (lambda.redexes().length < redexes || !(body !== null && vari !== null && has_variable(body, vari)));
   return lambda;
 }
@@ -72,6 +72,7 @@ const App: React.FC = () => {
   const [userAnswer, setUserAnswer] = useState('');
   const [responses, setResponses] = useState<Response[]>([]);
   const [showResult, setShowResult] = useState(false);
+  const [inputError, setInputError] = useState<string | null>(null);
 
   if (questions.length === 0) {
     let question = new_question();
@@ -97,7 +98,17 @@ const App: React.FC = () => {
 	    //return;
     }
     const correctAnswer = questions[currentIndex].answer;
-    let parsedAnswer = (new Parser(userAnswer).parse_line() as LambdaObject);
+    let parsedAnswer: LambdaObject;
+    try {
+      parsedAnswer = (new Parser(userAnswer).parse_input() as LambdaObject[])[0];
+    } catch (error) {
+      if (error instanceof LambdaSyntaxError || error instanceof LambdaLexerError) {
+        setInputError(error.message);
+        return;
+      }
+      throw error;
+    }
+    setInputError(null);
     const isCorrect = parsedAnswer.eq(correctAnswer, null);
     if (isCorrect) {
       const question = new_question();
@@ -187,6 +198,7 @@ const App: React.FC = () => {
             onChange={(e) => setUserAnswer(e.target.value)}
             placeholder="Reduced Expression"
           />
+          {inputError && <p className="error-message">{inputError}</p>}
           <button onClick={handleSubmit}>Submit</button>
         </div>
       ) : <>

@@ -39,6 +39,12 @@ button {
   font-weight: bold;
 }
 
+.error-message {
+  color: #c62828;
+  font-weight: 600;
+  margin: 6px 0 0;
+}
+
 .question-block {
   margin-top: 20px;
 }
