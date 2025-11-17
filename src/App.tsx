@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import './styles.css';
-import { LambdaObject } from './lambda_ir';
+import { LambdaObject, Variable, Application, Lambda } from './lambda_ir';
 import { Parser } from './parser';
+import { random_lambda } from './random_lambda';
 
 type Question = {
   question: LambdaObject;
@@ -20,11 +21,50 @@ type Response = {
   isCorrect: boolean;
 };
 
-let questions: Question[] = [
-  // { question: 'What is the capital of France?', answer: 'Paris' },
-  // { question: '2 + 2 = ?', answer: '4' },
-  // { question: 'What color is the sky on a clear day?', answer: 'Blue' },
-];
+function has_variable(obj: LambdaObject, vari: Variable) : boolean {
+  if (obj instanceof Variable) {
+    return obj.get_symbol() === vari.get_symbol();
+  } else if (obj instanceof Application) {
+    return has_variable(obj.get_left(), vari) || has_variable(obj.get_right(), vari);
+  } else if (obj instanceof Lambda) {
+    return obj.get_parameter().get_symbol() !== vari.get_symbol() && has_variable(obj.get_body(), vari);
+  }
+  return false;
+}
+
+function count_redexes(obj: LambdaObject) : number {
+  let redexes = 0;
+  for (let redex of obj.redexes()) {
+    console.log(`redex ${redex}`);
+    let lambda = (redex as Application).get_left() as Lambda;
+    console.log(`lambda ${lambda}`);
+    if (has_variable(lambda.get_body(), lambda.get_parameter())) {
+      redexes++;
+    }
+  }
+  return redexes;
+}
+
+function new_question() : LambdaObject {
+  let lambda: LambdaObject;
+  let redexes = Math.floor(2 * Math.random()) + 1;
+  let vari: Variable | null = null;
+  let body: LambdaObject | null = null;
+  do {
+    lambda = random_lambda(["w", "x", "y", "z"], 7);
+    let norm = lambda.norm_ord_redex();
+    if (norm === null) {
+	    continue;
+    }
+    let l = norm.get_left() as Lambda;
+    vari = l.get_parameter();
+    body = l.get_body();
+    console.log(`Checking: ${norm}, has variable ${has_variable(body, vari)}`);
+  } while (lambda.redexes().length < redexes || !(body !== null && vari !== null && has_variable(body, vari)));
+  return lambda;
+}
+
+let questions: Question[] = [];
 
 const App: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -33,7 +73,7 @@ const App: React.FC = () => {
   const [showResult, setShowResult] = useState(false);
 
   if (questions.length === 0) {
-    const question = new Parser("x (λx. x) y ((λy. x) y) ((λz.z z)(λx.x)(λx.x))").parse_expression() as LambdaObject;
+    let question = new_question();
     let answer = question.copy();
     let redex = answer.norm_ord_redex();
     if (redex === answer) {
@@ -59,7 +99,7 @@ const App: React.FC = () => {
     let parsedAnswer = (new Parser(userAnswer).parse_line() as LambdaObject);
     const isCorrect = parsedAnswer.eq(correctAnswer, null);
     if (isCorrect) {
-      const question = correctAnswer.copy();
+      const question = new_question();
       let answer = correctAnswer.copy();
       let redex = answer.norm_ord_redex();
       console.log(`before ${answer}`);

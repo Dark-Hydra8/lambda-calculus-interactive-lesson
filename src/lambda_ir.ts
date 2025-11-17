@@ -117,6 +117,7 @@ export abstract class LambdaObject {
 	}
 
 	public abstract copy() : LambdaObject;
+	public abstract redexes() : Application[];
 	public abstract norm_ord_redex() : Application | null;
 	public abstract replace(variable: Variable, replacement: LambdaObject) : void;
 	public abstract eq(other: LambdaObject, var_mapping: VariableMapping | null) : boolean;
@@ -161,6 +162,12 @@ export abstract class LambdaTree extends LambdaObject {
 		} else if (!is_right_child && this.left instanceof Application) {
 			this.left.reduce();
 		}
+	}
+
+	public redexes() : Application[] {
+		let redexes = this.left.redexes();
+		redexes.push(...this.right.redexes());
+		return redexes;
 	}
 
 	public norm_ord_redex() : Application | null {
@@ -271,6 +278,14 @@ export class Lambda extends LambdaTree {
 		var_mapping.exit_lambda(this, other);
 		return result;
 	}
+
+	public get_parameter() : Variable {
+		return this.left as Variable;
+	}
+
+	public get_body() : LambdaObject {
+		return this.right;
+	}
 }
 
 let count = 0;
@@ -301,6 +316,15 @@ export class Application extends LambdaTree {
 			this.parent.reload_free_vars();
 		}
 		return t_prime;
+	}
+
+	public redexes() : Application[] {
+		let redexes = this.left.redexes();
+		if (this.left instanceof Lambda) {
+			redexes.push(this);
+		}
+		redexes.push(...this.right.redexes());
+		return redexes;
 	}
 
 	public norm_ord_redex() : Application | null {
@@ -388,6 +412,10 @@ export class Variable extends LambdaObject {
 		return this.symbol;
 	}
 	
+	public redexes() : Application[] {
+		return [];
+	}
+
 	public norm_ord_redex() : Application | null {
 		return null;
 	}
