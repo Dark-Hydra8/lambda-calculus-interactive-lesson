@@ -19,6 +19,7 @@ type Response = {
   correctAnswer: LambdaObject;
   correctAnswerStr: string;
   isCorrect: boolean;
+  showCorrectAnswer: boolean;
 };
 
 function has_variable(obj: LambdaObject, vari: Variable) : boolean {
@@ -131,6 +132,7 @@ const App: React.FC = () => {
       correctAnswer,
       correctAnswerStr: String(correctAnswer),
       isCorrect,
+      showCorrectAnswer: false,
     };
 
     setResponses([...responses, newResponse]);
@@ -152,11 +154,23 @@ const App: React.FC = () => {
           <p><strong>Reduce:</strong> {res.lambdaExprStr}</p>
           <p>
             {!res.isCorrect && (
-		<>
+              <>
                 <span className="incorrect"> Incorrect answer: {res.userAnswerStr}</span>
-		<br></br>
-	        <span className="incorrect"> Correct answer was: {res.correctAnswerStr} </span>
-		</>
+                <br></br>
+                {res.showCorrectAnswer ? (
+                  <span className="incorrect"> Correct answer was: {res.correctAnswerStr} </span>
+                ) : (
+                  <button
+                    onClick={() => {
+                      const updated = [...responses];
+                      updated[idx] = { ...updated[idx], showCorrectAnswer: true };
+                      setResponses(updated);
+                    }}
+                  >
+                    Show correct answer
+                  </button>
+                )}
+              </>
             )}
           </p>
         </div>
