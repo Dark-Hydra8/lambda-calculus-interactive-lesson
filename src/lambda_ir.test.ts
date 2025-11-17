@@ -1,5 +1,6 @@
-import { Application, Lambda, Variable } from './lambda_ir';
+import { Application, Lambda, Variable, LambdaObject, norm_ord_reduce } from './lambda_ir';
 import { Parser } from './parser';
+import { replace_globals } from "./handle_dependencies";
 
 
 test("test the reduction of a lambda function", () => {
@@ -53,6 +54,24 @@ test("test the reduction of a lambda function", () => {
 	expect(String(obj3)).toEqual("(λz.λx.x z) x");
 	let result3 = (obj3.norm_ord_redex() as Application).reduce();
 	expect(String(result3)).toEqual("λx'.x' x");	
+});
+
+
+test("test the reduction of a lambda function that was causing issues", () => {
+	let objs = new Parser(
+		"(λx.x)λx.x\n" +
+		"λx.x\n" +
+		"y((λx.x)λx.x)\n" +
+		"y(λx.x)"
+	).parse_input() as LambdaObject[];
+	// console.log(`${objs[0]}\n${objs[1]}`);
+	expect(objs.length).toEqual(4);
+	let redex = objs[0].norm_ord_redex() as Application;
+	objs[0] = redex.reduce();
+	// console.log(`${objs[0]}\n${objs[1]}`);
+	expect(objs[0].eq(objs[1], null)).toEqual(true);
+	(objs[2].norm_ord_redex() as Application).reduce();
+	expect(objs[2].eq(objs[3], null)).toEqual(true);
 });
 
 test("test the eq function of LambdaObject children classes", () => {
@@ -156,4 +175,50 @@ test("ensure that parentesis are placed correctly", () => {
 	let expected = "λn.λm.n λn.λm.n (λx.λn.λt.n (x n t)) m m";
 	let actual = new Parser(expected).parse_input()[0];
 	expect(String(actual)).toEqual(expected);
+});
+
+test("ensure that reducing redexes many in a chain results in the correct result", () => {
+	let exprs = replace_globals(new Parser(
+		"scc 6\n" +
+		"plus 3 11\n" +
+		"times 9 5\n" +
+		"prd 17\n" +
+		"minus 13 9\n" +
+		"fact = fix L f. L x. isZero x 1 (times x (f (prd x)))\n" +
+		"fact 4\n" +
+		"fst (pair tru fls)\n" +
+		"snd (pair tru fls)\n" +
+		"list = L x. L y. pair tru (pair x y)\n" +
+		"l = pair tru (pair 2 (pair 3 fls))\n" +
+		"head l\n" +
+		"tail l\n" +
+		"gteq 12 4\n" +
+		"gteq 4 12\n" +
+		"equal 17 17"
+	).parse_input());
+	let results = new Parser(
+		"7\n" +
+		"14\n" +
+		"45\n" +
+		"16\n" +
+		"4\n" +
+		"24\n" +
+		"L x. L y. x\n" +
+		"L x. L y. y\n" +
+		"2\n" +
+		"L x. x 3 (L x. L y. y)\n" +
+		"L x. L y. x\n" +
+		"L x. L y. y\n" +
+		"L x. L y. x"
+	).parse_input() as LambdaObject[];
+	expect(exprs.length).toEqual(results.length);
+	for (let i = 0; i < exprs.length; i++) {
+		let reduced;
+		let before = exprs[i].copy();
+		while (exprs[i].norm_ord_redex() !== null) {
+			exprs[i] = norm_ord_reduce(exprs[i]) as Lambda;
+		}
+		// console.log(`${i}:\nbefore: ${before}\nafter: ${exprs[i]}\nexpected: ${results[i]}`);
+		expect(exprs[i].eq(results[i], null)).toEqual(true);
+	}
 });

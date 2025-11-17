@@ -1,4 +1,152 @@
 import React, { useState } from 'react';
+import './styles.css';
+import { LambdaObject } from './lambda_ir';
+import { Parser } from './parser';
+
+type Question = {
+  question: LambdaObject;
+  questionStr: string;
+  answer: LambdaObject;
+  answerStr: string;
+};
+
+type Response = {
+  lambdaExpr: LambdaObject;
+  lambdaExprStr: string;
+  userAnswer: LambdaObject;
+  userAnswerStr: string;
+  correctAnswer: LambdaObject;
+  correctAnswerStr: string;
+  isCorrect: boolean;
+};
+
+let questions: Question[] = [
+  // { question: 'What is the capital of France?', answer: 'Paris' },
+  // { question: '2 + 2 = ?', answer: '4' },
+  // { question: 'What color is the sky on a clear day?', answer: 'Blue' },
+];
+
+const App: React.FC = () => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [userAnswer, setUserAnswer] = useState('');
+  const [responses, setResponses] = useState<Response[]>([]);
+  const [showResult, setShowResult] = useState(false);
+
+  if (questions.length === 0) {
+    const question = new Parser("x (λx. x) y ((λy. x) y) ((λz.z z)(λx.x)(λx.x))").parse_expression() as LambdaObject;
+    let answer = question.copy();
+    let redex = answer.norm_ord_redex();
+    if (redex === answer) {
+      answer = redex.reduce();
+    } else if (redex !== null) {
+      redex.reduce();
+    } else {
+      throw new Error("inital statement has no redex");
+    }
+    if (redex !== null) {
+      questions.push({question, questionStr: String(question), answer, answerStr: String(answer)});
+    } else {
+      throw Error("No redex found");
+    }
+  }
+
+  const handleSubmit = () => {
+    console.log(currentIndex, questions.length);
+    if (currentIndex !== questions.length - 1) {
+	    //return;
+    }
+    const correctAnswer = questions[currentIndex].answer;
+    let parsedAnswer = (new Parser(userAnswer).parse_line() as LambdaObject);
+    const isCorrect = parsedAnswer.eq(correctAnswer, null);
+    if (isCorrect) {
+      const question = correctAnswer.copy();
+      let answer = correctAnswer.copy();
+      let redex = answer.norm_ord_redex();
+      console.log(`before ${answer}`);
+      if (answer === redex) {
+        answer = redex.reduce();
+      } else if (redex !== null) {
+        redex.reduce();
+      }
+      console.log(`after ${answer}`);
+      console.log(`question ${question}`);
+      if (redex !== null) {
+      	questions.push({
+		question,
+		questionStr: String(question),
+		answer,
+		answerStr: String(answer)
+	});
+      }
+      console.log(questions);
+    } else {
+      questions.push(questions[questions.length - 1]);
+    }
+
+    const newResponse: Response = {
+      lambdaExpr: questions[currentIndex].question,
+      lambdaExprStr: String(questions[currentIndex].question),
+      userAnswer: parsedAnswer,
+      userAnswerStr: String(parsedAnswer),
+      correctAnswer,
+      correctAnswerStr: String(correctAnswer),
+      isCorrect,
+    };
+
+    setResponses([...responses, newResponse]);
+    setUserAnswer('');
+
+    if (currentIndex + 1 < questions.length) {
+      setCurrentIndex(currentIndex + 1);
+    } else {
+      setShowResult(true);
+    }
+  };
+
+  return (
+    <div className="container">
+      <h1>Enter the normal order resolution of each expression</h1>
+
+      {responses.map((res, idx) => (
+        <div key={idx}>
+          <p><strong>Reduce:</strong> {res.lambdaExprStr}</p>
+          <p>
+            {!res.isCorrect && (
+		<>
+                <span className="incorrect"> Incorrect answer: {res.userAnswerStr}</span>
+		<br></br>
+	        <span className="incorrect"> Correct answer was: {res.correctAnswerStr} </span>
+		</>
+            )}
+          </p>
+        </div>
+      ))}
+
+      {!showResult ? (
+        <div>
+          <p><strong>Reduce:</strong> {questions[currentIndex].questionStr}</p>
+          <input
+            type="text"
+            value={userAnswer}
+            onChange={(e) => setUserAnswer(e.target.value)}
+            placeholder="Reduced Expression"
+          />
+          <button onClick={handleSubmit}>Submit</button>
+        </div>
+      ) : <>
+            <strong>Finished Resolving</strong>
+	    <br></br>
+	    {questions[currentIndex-1].answerStr}
+	  </>
+      }
+    </div>
+  );
+};
+
+export default App;
+
+/*
+import React, { useState } from 'react';
 import logo from './logo.svg';
 import './App.css';
 import { LambdaLexer, TokenType } from './lexer';
@@ -21,7 +169,7 @@ function App() {
 		}
 	}
 	lexer.print_tokens();
-	 */
+	 * /
 	// let parser = new Parser("((L x.(x x) y)w)h");
 
 	// let result = parser.parse_input()
@@ -94,3 +242,4 @@ function App() {
 }
 
 export default App;
+*/

@@ -153,3 +153,18 @@ test("ensure that handling of numbers works", () => {
 	expect(nums[4].eq(nums[5], null)).toEqual(true);
 	expect(nums[6].eq(nums[7], null)).toEqual(true);
 });
+
+test("ensure that variables are case sensitive", () => {
+	let results = new Parser(
+		"X\n" +
+		"x\n" +
+		"L x. X\n" +
+		"L x. x\n" +
+		"L X. L x. x\n" +
+		"L x. L X. x"
+	).parse_input() as LambdaObject[];
+	expect(results.length).toEqual(6);
+	expect(results[0].eq(results[1], null)).toEqual(false);
+	expect(results[2].eq(results[3], null)).toEqual(false);
+	expect(results[4].eq(results[5], null)).toEqual(false);
+});

@@ -10,6 +10,20 @@ function sets_eq<T>(set1: Set<T>, set2: Set<T>): boolean {
 	return true;
 }
 
+export function norm_ord_reduce(obj: LambdaObject) : LambdaObject | null {
+	let redex = obj.norm_ord_redex();
+	let result;
+	if (redex === null) {
+		result = null;
+	} else if (redex === obj) {
+		result = redex.reduce();
+	} else {
+		redex.reduce();
+		result = obj;
+	}
+	return result;
+}
+
 class VariableName {
 	public name: number | string;
 
@@ -150,12 +164,12 @@ export abstract class LambdaTree extends LambdaObject {
 	}
 
 	public norm_ord_redex() : Application | null {
-		let right = this.right.norm_ord_redex();
-		if (right !== null) {
-			return right;
-		}
 		let left = this.left.norm_ord_redex();
-		return left;
+		if (left !== null) {
+			return left;
+		}
+		let right = this.right.norm_ord_redex();
+		return right;
 	}
 
 	public abstract replace_child(old_child: LambdaObject, new_child: LambdaObject) : void;
@@ -193,7 +207,8 @@ export class Lambda extends LambdaTree {
 	}
 
 	public replace(variable: Variable, replacement: LambdaObject) : void {
-		if (variable !== this.left && this.get_free_vars().has(variable.get_symbol())) {
+		let this_call = count++;
+		if (!variable.eq(this.left, null) && this.get_free_vars().has(variable.get_symbol())) {
 			let parameter = (this.left as Variable).get_symbol();
 			if (replacement.get_free_vars().has(parameter)) {
 				let new_parameter = parameter;
@@ -212,8 +227,14 @@ export class Lambda extends LambdaTree {
 	}
 
 	public call(replacement: LambdaObject) : LambdaObject {
-		let result = this.right;
-		this.right.replace(this.left as Variable, replacement);
+		let result;
+		if (this.right instanceof Variable
+		    && (this.right as Variable).get_symbol() === (this.left as Variable).get_symbol()) {
+			result = replacement;
+		} else {
+			result = this.right;
+			this.right.replace(this.left as Variable, replacement);
+		}
 		this.left = new Variable("");
 		this.right = new Variable("");
 		this.free_vars = new Set();
@@ -251,6 +272,8 @@ export class Lambda extends LambdaTree {
 		return result;
 	}
 }
+
+let count = 0;
 
 export class Application extends LambdaTree {
 	public constructor(left: LambdaObject, right: LambdaObject) {

@@ -122,7 +122,6 @@ test("ensure that replace_globals works", () => {
 		"λf. λs. λb. b f s\n" +
 		"times\n" +
 		"λn. λm. n ((λn. λm. n (λx. λn. λt. n (x n t)) m) m) λt. λs. s\n" +
-		// "(λn. λm. n (λn. λm. n (λx. λn. λt. n (x n t)) m m) λt.λs.s)\n" +
 		"or\n" +
 		"(λx. λy. x (λx. λy. x) y)\n" +
 		"pair times or\n" +

@@ -10,7 +10,7 @@ class GenericSyntaxError<TokenTypeType> extends Error {
 			} else {
 				found_str = String(found);
 			}
-			message = `Syntax error: found ${found_str}, but expected one of ${expected}`;
+			message = `Syntax error: found ${found_str}, but expected one of [${expected}]`;
 		}
 		super(message);
 		this.name = "GenericSyntaxError";
@@ -161,7 +161,7 @@ export class LambdaSyntaxError extends GenericSyntaxError<TokenType> {
 
 	public constructor(found: TokenType, expected: TokenType[], line_number: number, message: string | null = null) {
 		if (message === null) {
-			message = `Syntax error: found ${found}, but expected one of ${expected} on line ${line_number}`;
+			message = `Syntax error: found ${found}, but expected one of [${expected}] on line ${line_number}`;
 		}
 		super(found, expected, message);
 		this.name = "LambdaSyntaxError";
