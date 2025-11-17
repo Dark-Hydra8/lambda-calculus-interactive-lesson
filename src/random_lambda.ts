@@ -21,8 +21,8 @@ export function random_lambda(variables: string[], depth: number = 10) : LambdaO
 			break;
 		case 2:
 			result = new Application(
-				random_lambda(variables, depth-1),
-				random_lambda(variables, depth-1)
+				random_lambda(variables, depth),
+				random_lambda(variables, depth)
 				);
 			break;
 		default:

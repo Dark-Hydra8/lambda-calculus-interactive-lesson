@@ -18,12 +18,20 @@ button {
 .response {
   margin-bottom: 20px;
   background: #f9f9f9;
-  padding: 10px;
-  border-left: 4px solid #ccc;
+  padding: 16px 20px;
+  border: 1px solid #dcdcdc;
+  border-left: 4px solid #888;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
 }
 
 .incorrect {
   color: red;
+  font-weight: bold;
+}
+
+.correct {
+  color: #1a7f37;
   font-weight: bold;
 }
 

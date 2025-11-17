@@ -52,7 +52,7 @@ function new_question() : LambdaObject {
   let vari: Variable | null = null;
   let body: LambdaObject | null = null;
   do {
-    lambda = random_lambda(["w", "x", "y", "z"], 7);
+    lambda = random_lambda(["w", "x", "y", "z"], 2);
     let norm = lambda.norm_ord_redex();
     if (norm === null) {
 	    continue;
@@ -150,10 +150,12 @@ const App: React.FC = () => {
       <h1>Enter the normal order resolution of each expression</h1>
 
       {responses.map((res, idx) => (
-        <div key={idx}>
+        <div key={idx} className="response">
           <p><strong>Reduce:</strong> {res.lambdaExprStr}</p>
           <p>
-            {!res.isCorrect && (
+            {res.isCorrect ? (
+              <span className="correct">Correct! Answer: {res.correctAnswerStr}</span>
+            ) : (
               <>
                 <span className="incorrect"> Incorrect answer: {res.userAnswerStr}</span>
                 <br></br>
