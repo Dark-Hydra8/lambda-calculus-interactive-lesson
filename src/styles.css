@@ -25,6 +25,10 @@ button {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
 }
 
+.response p {
+  margin: 0;
+}
+
 .incorrect {
   color: red;
   font-weight: bold;

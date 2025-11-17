@@ -52,7 +52,7 @@ function new_question() : LambdaObject {
   let vari: Variable | null = null;
   let body: LambdaObject | null = null;
   do {
-    lambda = random_lambda(["w", "x", "y", "z"], 2);
+    lambda = random_lambda(["w", "x", "y", "z"], 4);
     let norm = lambda.norm_ord_redex();
     if (norm === null) {
 	    continue;
