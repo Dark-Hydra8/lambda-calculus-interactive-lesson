@@ -81,3 +81,63 @@ button {
   color: #666;
   line-height: 1.6;
 }
+
+/* Lambda expression rendering styles */
+.lambda-variable {
+  color: #333;
+  font-weight: 500;
+}
+
+.lambda-symbol {
+  color: #0066cc;
+  font-weight: bold;
+}
+
+.lambda-dot {
+  color: #666;
+  margin: 0 2px;
+}
+
+.lambda-abstraction {
+  color: #333;
+}
+
+.lambda-application {
+  cursor: pointer;
+  padding: 2px 4px;
+  margin: 1px;
+  border-radius: 3px;
+  transition: all 0.2s ease;
+  display: inline-block;
+}
+
+.lambda-application:hover {
+  background-color: #e3f2fd;
+  outline: 2px solid #2196f3;
+}
+
+.lambda-application.selected {
+  background-color: #bbdefb;
+  outline: 2px solid #1976d2;
+  font-weight: bold;
+}
+
+.lambda-application.correct-redex {
+  background-color: #d4edda;
+  outline: 2px solid #28a745;
+}
+
+.lambda-application.incorrect-selection {
+  background-color: #f8d7da;
+  outline: 2px solid #dc3545;
+}
+
+.lambda-application.missed-redex {
+  background-color: #fff3cd;
+  outline: 2px solid #ffc107;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
