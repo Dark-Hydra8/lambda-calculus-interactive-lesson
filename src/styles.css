@@ -48,3 +48,36 @@ button {
 .question-block {
   margin-top: 20px;
 }
+
+.lesson-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.lesson-card {
+  background: #f9f9f9;
+  border: 2px solid #dcdcdc;
+  border-radius: 12px;
+  padding: 24px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.lesson-card:hover {
+  border-color: #888;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.lesson-card h2 {
+  margin: 0 0 12px 0;
+  color: #333;
+}
+
+.lesson-card p {
+  margin: 0;
+  color: #666;
+  line-height: 1.6;
+}

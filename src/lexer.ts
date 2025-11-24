@@ -253,7 +253,7 @@ export class LambdaLexer extends GenericLexer<TokenType> {
 				[TokenType.lparen]: /\(/y,
 				[TokenType.rparen]: /\)/y,
 				[TokenType.equals]: /=/y,
-				[TokenType.variable]: /[a-zA-Z][a-zA-Z_0-9]*/y,
+				[TokenType.variable]: /[a-zA-Z][a-zA-Z_0-9']*/y,
 				[TokenType.whitespace]: /[ \t]+/y,
 				[TokenType.new_line]: /\n/y,
 				[TokenType.number]: /([1-9][0-9]*)|0/y,
