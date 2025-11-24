@@ -26,7 +26,7 @@ function new_question(): LambdaObject {
   let lambda: LambdaObject;
   let target;
   do {
-    lambda = random_lambda(["w", "x", "y", "z"], 4);
+    lambda = random_lambda(["w", "x", "y", "z"], 3);
     target = Math.floor(2 * Math.random()) + 1;
   } while (lambda.redexes().length <= target);
   return lambda;
@@ -105,6 +105,7 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
   const [confirmedRedexes, setConfirmedRedexes] = useState<ConfirmedRedex[]>([]);
   const [showResult, setShowResult] = useState(false);
   const [showAnswers, setShowAnswers] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const [responses, setResponses] = useState<Array<{
     question: LambdaObject;
     questionStr: string;
@@ -306,20 +307,17 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
         const result = [...prev, ...filtered];
         
         // Final deduplication pass to ensure no duplicates slipped through
+        // Deduplicate by selection range only (same start/end = duplicate, regardless of redex)
         const finalDeduplicated: ConfirmedRedex[] = [];
-        const seen = new Map<Application, Set<string>>();
+        const seenRanges = new Set<string>();
         
-        result.forEach(cr => {
+        result.forEach((cr, index) => {
           const rangeKey = `${cr.selectionRange.start}-${cr.selectionRange.end}`;
-          if (!seen.has(cr.redex)) {
-            seen.set(cr.redex, new Set());
-          }
-          const ranges = seen.get(cr.redex)!;
-          if (!ranges.has(rangeKey)) {
-            ranges.add(rangeKey);
+          if (!seenRanges.has(rangeKey)) {
+            seenRanges.add(rangeKey);
             finalDeduplicated.push(cr);
           } else {
-            console.log(`Final dedup: removing duplicate redex at ${rangeKey}`);
+            console.log(`Final dedup: removing duplicate selection range at ${rangeKey} (index ${index})`);
           }
         });
         
@@ -361,6 +359,7 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
     };
 
     setResponses([...responses, response]);
+    setIsSubmitted(true);
 
     if (isCorrect) {
       // Generate new question
@@ -375,9 +374,9 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
       setConfirmedRedexes([]);
       setCurrentSelection(null);
       setShowAnswers(false);
-    } else {
-      setShowAnswers(true);
+      setIsSubmitted(false);
     }
+    // Don't automatically show answers - user must click button
   };
 
   const handleNext = () => {
@@ -386,6 +385,7 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
       setConfirmedRedexes([]);
       setCurrentSelection(null);
       setShowAnswers(false);
+      setIsSubmitted(false);
     } else {
       setShowResult(true);
     }
@@ -395,6 +395,11 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
     setConfirmedRedexes([]);
     setCurrentSelection(null);
     setShowAnswers(false);
+    setIsSubmitted(false);
+  };
+
+  const handleShowAnswer = () => {
+    setShowAnswers(true);
   };
 
   // Render the expression with highlights (excluding confirmed redexes, handles overlaps)
@@ -525,27 +530,44 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
     
     const text = currentQuestion.questionStr;
     
-    // Remove duplicates based on start/end indexes and redex object identity
-    const seen = new Map<Application, Set<string>>();
-    const deduplicated = confirmedRedexes.filter(cr => {
+    // Remove duplicates based on start/end indexes - only show unique selection ranges
+    // If the same range appears with multiple redexes, prefer the correct one
+    const rangeMap = new Map<string, ConfirmedRedex>();
+    
+    confirmedRedexes.forEach(cr => {
       const rangeKey = `${cr.selectionRange.start}-${cr.selectionRange.end}`;
-      if (!seen.has(cr.redex)) {
-        seen.set(cr.redex, new Set());
+      const existing = rangeMap.get(rangeKey);
+      
+      if (!existing) {
+        // First time seeing this range
+        rangeMap.set(rangeKey, cr);
+      } else {
+        // Range already exists - keep the correct redex if one is correct
+        const existingIsCorrect = correctRedexesSet.has(existing.redex);
+        const currentIsCorrect = correctRedexesSet.has(cr.redex);
+        
+        if (currentIsCorrect && !existingIsCorrect) {
+          // Current is correct, existing is not - replace
+          rangeMap.set(rangeKey, cr);
+          console.log(`renderConfirmedRedexes: replacing incorrect with correct redex at ${rangeKey}`);
+        } else if (!currentIsCorrect && existingIsCorrect) {
+          // Existing is correct, current is not - keep existing
+          console.log(`renderConfirmedRedexes: keeping correct redex, skipping incorrect at ${rangeKey}`);
+        } else {
+          // Both same type (both correct or both incorrect) - keep first one
+          console.log(`renderConfirmedRedexes: duplicate selection range at ${rangeKey}, keeping first`);
+        }
       }
-      const ranges = seen.get(cr.redex)!;
-      if (ranges.has(rangeKey)) {
-        console.log(`renderConfirmedRedexes: removing duplicate at ${rangeKey}`);
-        return false;
-      }
-      ranges.add(rangeKey);
-      return true;
     });
+    
+    const deduplicated = Array.from(rangeMap.values());
+    console.log(`renderConfirmedRedexes: deduplicated from ${confirmedRedexes.length} to ${deduplicated.length}`);
     
     // Render each redex on its own line, showing the full string with the highlighted portion marked
     return (
       <div>
         {deduplicated.map((confirmedRedex, index) => {
-          console.log(`confirmedRedexes: ${confirmedRedexes}`);
+          console.log(`confirmedRedexes: ${confirmedRedexes.map(i => `${i.redex} ${i.selectionRange.start}-${i.selectionRange.end}`).join(", ")}`);
           console.log(`rendering redex ${confirmedRedex.redex.toString()} at range ${confirmedRedex.selectionRange.start} to ${confirmedRedex.selectionRange.end} and index ${index}`);
           const { redex, selectionRange } = confirmedRedex;
           
@@ -557,8 +579,10 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
             // When showing answers, distinguish correct from incorrect
             if (isCorrect) {
               className += ' correct-redex';
+              console.log(`Applying correct-redex class to redex at ${selectionRange.start}-${selectionRange.end}`);
             } else {
               className += ' incorrect-selection';
+              console.log(`Applying incorrect-selection class to redex at ${selectionRange.start}-${selectionRange.end}`);
             }
           }
           
@@ -706,11 +730,16 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
           )}
 
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            <button onClick={handleSubmit} disabled={showAnswers}>
+            <button onClick={handleSubmit} disabled={isSubmitted}>
               Submit
             </button>
-            {showAnswers && (
+            {isSubmitted && (
               <>
+                {!showAnswers && (
+                  <button onClick={handleShowAnswer}>
+                    Show Correct Answer
+                  </button>
+                )}
                 <button onClick={handleReset}>Try Again</button>
                 <button onClick={handleNext}>Next Question</button>
               </>
