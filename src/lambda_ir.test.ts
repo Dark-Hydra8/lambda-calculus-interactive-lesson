@@ -222,3 +222,108 @@ test("ensure that reducing redexes many in a chain results in the correct result
 		expect(exprs[i].eq(results[i], null)).toEqual(true);
 	}
 });
+
+test("test redex_ranges function", () => {
+	// Variable should have no redex ranges
+	let var1 = new Variable("x");
+	let varRanges = var1.redex_ranges();
+	expect(varRanges.length).toEqual(0);
+
+	// Simple redex: (λx.x) y
+	let simpleRedex = new Application(
+		new Lambda(
+			new Variable("x"),
+			new Variable("x")
+		),
+		new Variable("y")
+	);
+	let simpleRanges = simpleRedex.redex_ranges();
+	let simpleStr = String(simpleRedex).replace(/\s/g, '');
+	expect(simpleRanges.length).toEqual(1);
+	expect(simpleRanges[0].start).toEqual(0);
+	expect(simpleRanges[0].end).toEqual(simpleStr.length);
+	
+	// Verify the range points to the full redex
+	expect(simpleStr.substring(simpleRanges[0].start, simpleRanges[0].end)).toEqual(simpleStr);
+
+	// Nested redexes: (λx.x) ((λy.y) z)
+	let nestedRedex = new Application(
+		new Lambda(
+			new Variable("x"),
+			new Variable("x")
+		),
+		new Application(
+			new Lambda(
+				new Variable("y"),
+				new Variable("y")
+			),
+		new Variable("z")
+		)
+	);
+	let nestedRanges = nestedRedex.redex_ranges();
+	let nestedStr = String(nestedRedex).replace(/\s/g, '');
+	// Should have 2 redexes: the outer one and the left inner one
+	expect(nestedRanges.length).toEqual(2);
+	// The outer redex should span the entire expression
+	let outerRange = nestedRanges.find(r => r.start === 0 && r.end === nestedStr.length);
+	expect(outerRange).toBeDefined();
+	expect(nestedRanges.find(r => r.start === 7 && r.end === 14)).toBeDefined();
+	
+	// One redex: (λx.x) y (λz.z) w
+	let multiRedex = new Application(
+		new Application(
+			new Application(
+				new Lambda(
+					new Variable("x"),
+					new Variable("x")
+				),
+				new Variable("y")
+			),
+			new Lambda(
+				new Variable("z"),
+				new Variable("z")
+			)
+		),
+		new Variable("w")
+	);
+	let multiRanges = multiRedex.redex_ranges();
+	let multiStr = String(multiRedex).replace(/\s/g, '');
+	expect(multiRanges.length).toEqual(1);
+	expect(multiRanges[0].start).toEqual(0);
+	expect(multiRanges[0].end).toEqual(7);
+	
+	// Lambda with no redexes in body: λx.y
+	let lambdaNoRedex = new Lambda(
+		new Variable("x"),
+		new Variable("y")
+	);
+	let lambdaRanges = lambdaNoRedex.redex_ranges();
+	expect(lambdaRanges.length).toEqual(0);
+	
+	// Lambda with redex in body: λx.(λy.y) z
+	let lambdaWithRedex = new Lambda(
+		new Variable("x"),
+		new Application(
+			new Lambda(
+				new Variable("y"),
+				new Variable("y")
+			),
+			new Variable("z")
+		)
+	);
+	let lambdaWithRedexRanges = lambdaWithRedex.redex_ranges();
+	let lambdaWithRedexStr = String(lambdaWithRedex).replace(/\s/g, '');
+	// Should have 1 redex in the body
+	expect(lambdaWithRedexRanges.length).toEqual(1);
+	// The range should be adjusted for the lambda prefix (λx.)
+	let prefixLength = String(lambdaWithRedex.get_parameter()).length + 2; // "λx."
+	expect(lambdaWithRedexRanges[0].start).toBeGreaterThanOrEqual(prefixLength);
+	expect(lambdaWithRedexRanges[0].end).toBeLessThanOrEqual(lambdaWithRedexStr.length);
+	
+	// Verify ranges don't exceed string bounds
+	for (let range of lambdaWithRedexRanges) {
+		expect(range.start).toBeGreaterThanOrEqual(0);
+		expect(range.end).toBeLessThanOrEqual(lambdaWithRedexStr.length);
+		expect(range.start).toBeLessThan(range.end);
+	}
+});

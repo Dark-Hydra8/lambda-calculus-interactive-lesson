@@ -36,7 +36,15 @@ class VariableName {
 	}
 }
 
+export class Range {
+	public start: number;
+	public end: number;
 
+	public constructor(start: number, end: number) {
+		this.start = start;
+		this.end = end;
+	}
+}
 
 class VariableMapping {
 	protected sym_to_name_left: Record<string, VariableName[]>;
@@ -118,6 +126,7 @@ export abstract class LambdaObject {
 
 	public abstract copy() : LambdaObject;
 	public abstract redexes() : Application[];
+	public abstract redex_ranges() : Range[];
 	public abstract norm_ord_redex() : Application | null;
 	public abstract replace(variable: Variable, replacement: LambdaObject) : void;
 	public abstract eq(other: LambdaObject, var_mapping: VariableMapping | null) : boolean;
@@ -248,6 +257,15 @@ export class Lambda extends LambdaTree {
 		return result;
 	}
 
+	public redex_ranges() : Range[] {
+		let start = String(this.left).replace(/\s/g, '').length + 2;
+		let redexes: Range[] = [];
+		for (let redex of this.right.redex_ranges()) {
+			redexes.push(new Range(redex.start + start, redex.end + start));
+		}
+		return redexes;
+	}
+
 	public toString() : string {
 		return `λ${this.left}.${this.right}`
 	}
@@ -327,6 +345,40 @@ export class Application extends LambdaTree {
 		return redexes;
 	}
 
+	public redex_ranges() : Range[] {
+		let start;
+		if (this.left instanceof Lambda) {
+			start = 1;
+		} else {
+			start = 0;
+		}
+		let redexes = [];
+		for (let redex of this.left.redex_ranges()) {
+			redexes.push(new Range(redex.start + start, redex.end + start));
+		}
+
+		if (this.left instanceof Lambda) {
+			redexes.push(new Range(0, String(this).replace(/\s/g, '').length));
+		}
+
+		let left = String(this.left).replace(/\s/g, '').length;
+		if (this.left instanceof Lambda) {
+			start += left + 1;
+		} else {
+			start += left;
+		}
+
+		if (this.right instanceof Application
+		    || this.right instanceof Lambda && this.parent instanceof Application && this.parent.left === this) {
+			start++;
+		}
+
+		for (let redex of this.right.redex_ranges()) {
+			redexes.push(new Range(redex.start + start, redex.end + start));
+		}
+		return redexes;
+	}
+
 	public norm_ord_redex() : Application | null {
 		if (this.left instanceof Lambda) {
 			return this;
@@ -336,18 +388,6 @@ export class Application extends LambdaTree {
 	}
 
 	public toString() : string {
-		/*
-		let left = String(this.left);
-		if (this.left instanceof Lambda) {
-			left = `(${left})`;
-		}
-
-		let right = String(this.right);
-		if (this.right instanceof Application) {
-			right = `(${right})`;
-		}
-	         */
-
 		let left;
 		if (this.left instanceof Lambda) {
 			left = `(${this.left})`;
@@ -413,6 +453,10 @@ export class Variable extends LambdaObject {
 	}
 	
 	public redexes() : Application[] {
+		return [];
+	}
+
+	public redex_ranges() : Range[] {
 		return [];
 	}
 

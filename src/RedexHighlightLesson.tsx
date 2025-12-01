@@ -125,8 +125,7 @@ function findApplicationsInRange(
 }
 
 type ConfirmedRedex = {
-  redex: Application;
-  selectionRange: SelectionRange;
+  range: SelectionRange;
 };
 
 export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack }) => {
@@ -168,6 +167,41 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
     ranges.sort((a, b) => a.start - b.start);
     return ranges;
   }, [currentIndex]);
+
+  // Build mapping from redex Application to its range using redex_ranges()
+  const redexToRangeMap = useMemo(() => {
+    const map = new Map<Application, SelectionRange>();
+    const allRedexRanges = currentQuestion.question.redex_ranges();
+    const allRedexes = currentQuestion.correctRedexes;
+    const questionStrNoSpaces = currentQuestion.questionStr.replace(/\s/g, '');
+    
+    // Match each redex to its range by checking which range's substring matches the redex string
+    // For nested redexes, we want the outermost range that exactly matches the redex
+    for (const redex of allRedexes) {
+      const redexStrNoSpaces = String(redex).replace(/\s/g, '');
+      // Find the range that exactly matches this redex's string representation
+      // Sort ranges by size (largest first) to prefer outermost ranges
+      const sortedRanges = [...allRedexRanges].sort((a, b) => (b.end - b.start) - (a.end - a.start));
+      for (const range of sortedRanges) {
+        const rangeStr = questionStrNoSpaces.substring(range.start, range.end);
+        if (rangeStr === redexStrNoSpaces) {
+          map.set(redex, { start: range.start, end: range.end });
+          break; // Found the matching range for this redex
+        }
+      }
+    }
+    return map;
+  }, [currentIndex]);
+
+  // Build reverse mapping from range to redex Application for display
+  const rangeToRedexMap = useMemo(() => {
+    const map = new Map<string, Application>();
+    redexToRangeMap.forEach((range, redex) => {
+      const rangeKey = `${range.start}-${range.end}`;
+      map.set(rangeKey, redex);
+    });
+    return map;
+  }, [redexToRangeMap]);
 
   // Get applications covered by current selection
   const currentSelectionApps = useMemo(() => {
@@ -258,107 +292,27 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
     
     isProcessingRef.current = true;
     
-    const apps = findApplicationsInRange(currentSelection, applicationRanges);
-    // Deduplicate apps first (in case same Application appears multiple times)
-    // Use a Map to ensure proper deduplication by object reference
-    const appsMap = new Map<Application, Application>();
-    apps.forEach(app => {
-      if (!appsMap.has(app)) {
-        appsMap.set(app, app);
-      }
-    });
-    const uniqueApps = Array.from(appsMap.values());
+    // Find which correct redex range matches the current selection
+    // Check if the selection range matches any correct redex range
+    const matchingRange = Array.from(redexToRangeMap.values()).find(range => 
+      range.start === currentSelection.start && range.end === currentSelection.end
+    );
     
-    // Filter to only include redexes (applications where left is Lambda)
-    const redexes = uniqueApps.filter(app => app.get_left() instanceof Lambda);
-    
-    // Deduplicate redexes using Map for reliable object reference comparison
-    const redexesMap = new Map<Application, Application>();
-    redexes.forEach(redex => {
-      if (!redexesMap.has(redex)) {
-        redexesMap.set(redex, redex);
-      }
-    });
-    const uniqueRedexes = Array.from(redexesMap.values());
-    
-    if (uniqueRedexes.length > 0) {
-      // Allow overlapping highlights - add all redexes with the exact selection range
-      // But don't add the same redex with the same selection range twice
+    if (matchingRange) {
+      // Selection matches a correct redex range - add it
       setConfirmedRedexes(prev => {
-        // Create a set to track what we're adding in this batch (deduplicate within batch)
-        const batchSet = new Map<Application, ConfirmedRedex>();
+        const rangeKey = `${matchingRange.start}-${matchingRange.end}`;
+        // Check if this range is already confirmed
+        const alreadyExists = prev.some(cr => 
+          cr.range.start === matchingRange.start && cr.range.end === matchingRange.end
+        );
         
-        // First, deduplicate within the new batch
-        // Create a fresh copy of the selection range to avoid reference issues
-        const selectionRangeCopy = {
-          start: currentSelection.start,
-          end: currentSelection.end
-        };
+        if (alreadyExists) {
+          console.log(`Skipping duplicate: redex range at ${matchingRange.start}-${matchingRange.end}`);
+          return prev;
+        }
         
-        uniqueRedexes.forEach(redex => {
-          if (!batchSet.has(redex)) {
-            batchSet.set(redex, {
-              redex,
-              selectionRange: selectionRangeCopy
-            });
-          }
-        });
-        
-        const newConfirmedRedexes = Array.from(batchSet.values());
-
-        // Create a Set of existing combinations for fast lookup
-        // Use a string key combining redex object identity and selection range
-        const existingKeys = new Set<string>();
-        prev.forEach(existing => {
-          // Create a unique key - we'll use the redex object reference
-          // Since we can't stringify objects reliably, we'll use a combination approach
-          // Store the index in prev array as a proxy for object identity
-          const prevIndex = prev.indexOf(existing);
-          const key = `${prevIndex}-${existing.selectionRange.start}-${existing.selectionRange.end}`;
-          existingKeys.add(key);
-        });
-        
-        // Filter out any that already exist in prev (same redex + same selection range)
-        const filtered = newConfirmedRedexes.filter((newCr, newIndex) => {
-          // Check if this exact combination exists
-          const exists = prev.some((existing, existingIndex) => {
-            // Check object identity first (fast)
-            if (existing.redex !== newCr.redex) return false;
-            // Then check selection range
-            if (existing.selectionRange.start !== newCr.selectionRange.start) return false;
-            if (existing.selectionRange.end !== newCr.selectionRange.end) return false;
-            return true;
-          });
-          
-          if (exists) {
-            console.log(`Skipping duplicate: redex at ${newCr.selectionRange.start}-${newCr.selectionRange.end}`);
-            return false;
-          }
-          return true;
-        });
-        
-        console.log(`Adding ${filtered.length} new redexes (filtered from ${newConfirmedRedexes.length})`);
-        
-        const result = [...prev, ...filtered];
-        
-        // Final deduplication pass to ensure no duplicates slipped through
-        // Deduplicate by selection range only (same start/end = duplicate, regardless of redex)
-        const finalDeduplicated: ConfirmedRedex[] = [];
-        const seenRanges = new Set<string>();
-        
-        result.forEach((cr, index) => {
-          const rangeKey = `${cr.selectionRange.start}-${cr.selectionRange.end}`;
-          if (!seenRanges.has(rangeKey)) {
-            seenRanges.add(rangeKey);
-            finalDeduplicated.push(cr);
-          } else {
-            console.log(`Final dedup: removing duplicate selection range at ${rangeKey} (index ${index})`);
-          }
-        });
-        
-        console.log(`Final count: ${finalDeduplicated.length} (was ${result.length})`);
-        
-        return finalDeduplicated;
+        return [...prev, { range: { ...matchingRange } }];
       });
     }
     
@@ -374,22 +328,37 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
   };
 
   const handleSubmit = () => {
-    const selectedArray = confirmedRedexes.map(cr => cr.redex);
-    const correctArray = currentQuestion.correctRedexes;
+    // Get all correct redex ranges
+    const correctRanges = Array.from(redexToRangeMap.values());
+    const selectedRanges = confirmedRedexes.map(cr => cr.range);
     
-    // Check if all correct redexes are selected and no incorrect ones
-    const selectedSet = new Set(selectedArray);
-    const correctSet = new Set(correctArray);
+    // Create sets for comparison using range keys
+    const selectedRangeKeys = new Set(selectedRanges.map(r => `${r.start}-${r.end}`));
+    const correctRangeKeys = new Set(correctRanges.map(r => `${r.start}-${r.end}`));
     
-    const allCorrectSelected = correctArray.every(redex => selectedSet.has(redex));
-    const noIncorrectSelected = selectedArray.every(app => correctSet.has(app));
-    const isCorrect = allCorrectSelected && noIncorrectSelected && selectedArray.length === correctArray.length;
+    // Check if all correct redex ranges are selected
+    const allCorrectSelected = correctRanges.every(range => 
+      selectedRangeKeys.has(`${range.start}-${range.end}`)
+    );
+    
+    // Check if no incorrect ranges are selected (all selected ranges are correct)
+    const noIncorrectSelected = selectedRanges.every(range =>
+      correctRangeKeys.has(`${range.start}-${range.end}`)
+    );
+    
+    const isCorrect = allCorrectSelected && noIncorrectSelected && selectedRanges.length === correctRanges.length;
+
+    // Convert ranges back to redexes for response (for compatibility)
+    const selectedRedexes = selectedRanges.map(range => {
+      const rangeKey = `${range.start}-${range.end}`;
+      return rangeToRedexMap.get(rangeKey);
+    }).filter((redex): redex is Application => redex !== undefined);
 
     const response = {
       question: currentQuestion.question,
       questionStr: currentQuestion.questionStr,
-      selectedRedexes: selectedArray,
-      correctRedexes: correctArray,
+      selectedRedexes,
+      correctRedexes: currentQuestion.correctRedexes,
       isCorrect,
     };
 
@@ -457,9 +426,10 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
     
     // Add all correct redexes when showing answers - convert positions to include spaces
     // Show all correct redexes (not just missed ones) and allow overlaps
+    // Use redex_ranges() to get the correct ranges
     if (showAnswers) {
       currentQuestion.correctRedexes.forEach(redex => {
-        const range = applicationRanges.find(r => r.application === redex);
+        const range = redexToRangeMap.get(redex);
         if (range) {
           const startWithSpaces = positionWithSpaces(text, range.start);
           const endWithSpaces = positionWithSpaces(text, range.end);
@@ -533,12 +503,13 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
             
             // Calculate nesting depth for missed highlights (correct answers)
             // Outer highlights (fewer containing highlights) should have larger boxes
+            // Use redex_ranges() to get the correct ranges
             let minNestingDepth = Infinity;
             if (hasMissed && showAnswers) {
               const allMissedHighlights = highlights.filter(h => h.type === 'missed');
               missedHighlights.forEach(h => {
                 if (h.redex) {
-                  const range = applicationRanges.find(r => r.application === h.redex);
+                  const range = redexToRangeMap.get(h.redex);
                   if (range) {
                     const startWithSpaces = positionWithSpaces(text, range.start);
                     const endWithSpaces = positionWithSpaces(text, range.end);
@@ -546,7 +517,7 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
                     let containingCount = 0;
                     allMissedHighlights.forEach(otherH => {
                       if (otherH.redex && otherH.redex !== h.redex) {
-                        const otherRange = applicationRanges.find(r => r.application === otherH.redex);
+                        const otherRange = redexToRangeMap.get(otherH.redex);
                         if (otherRange) {
                           const otherStart = positionWithSpaces(text, otherRange.start);
                           const otherEnd = positionWithSpaces(text, otherRange.end);
@@ -647,65 +618,44 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
     
     const text = currentQuestion.questionStr;
     
-    // Remove duplicates based on start/end indexes - only show unique selection ranges
-    // If the same range appears with multiple redexes, prefer the correct one
+    // Remove duplicates - each range should only appear once
     const rangeMap = new Map<string, ConfirmedRedex>();
     
     confirmedRedexes.forEach(cr => {
-      const rangeKey = `${cr.selectionRange.start}-${cr.selectionRange.end}`;
-      const existing = rangeMap.get(rangeKey);
-      
-      if (!existing) {
-        // First time seeing this range
+      const rangeKey = `${cr.range.start}-${cr.range.end}`;
+      if (!rangeMap.has(rangeKey)) {
         rangeMap.set(rangeKey, cr);
-      } else {
-        // Range already exists - keep the correct redex if one is correct
-        const existingIsCorrect = correctRedexesSet.has(existing.redex);
-        const currentIsCorrect = correctRedexesSet.has(cr.redex);
-        
-        if (currentIsCorrect && !existingIsCorrect) {
-          // Current is correct, existing is not - replace
-          rangeMap.set(rangeKey, cr);
-          console.log(`renderConfirmedRedexes: replacing incorrect with correct redex at ${rangeKey}`);
-        } else if (!currentIsCorrect && existingIsCorrect) {
-          // Existing is correct, current is not - keep existing
-          console.log(`renderConfirmedRedexes: keeping correct redex, skipping incorrect at ${rangeKey}`);
-        } else {
-          // Both same type (both correct or both incorrect) - keep first one
-          console.log(`renderConfirmedRedexes: duplicate selection range at ${rangeKey}, keeping first`);
-        }
       }
     });
     
     const deduplicated = Array.from(rangeMap.values());
-    console.log(`renderConfirmedRedexes: deduplicated from ${confirmedRedexes.length} to ${deduplicated.length}`);
     
     // Render each redex on its own line, showing the full string with the highlighted portion marked
     return (
       <div>
         {deduplicated.map((confirmedRedex, index) => {
-          console.log(`confirmedRedexes: ${confirmedRedexes.map(i => `${i.redex} ${i.selectionRange.start}-${i.selectionRange.end}`).join(", ")}`);
-          console.log(`rendering redex ${confirmedRedex.redex.toString()} at range ${confirmedRedex.selectionRange.start} to ${confirmedRedex.selectionRange.end} and index ${index}`);
-          const { redex, selectionRange } = confirmedRedex;
+          const { range } = confirmedRedex;
           
-          // Determine styling - show both correct and incorrect
+          // Look up the redex from the range for display purposes
+          const rangeKey = `${range.start}-${range.end}`;
+          const redex = rangeToRedexMap.get(rangeKey);
+          
+          // Determine styling - check if this range is a correct redex range
           let className = 'text-selection confirmed-redex';
-          const isCorrect = correctRedexesSet.has(redex);
+          const isCorrect = redex !== undefined && correctRedexesSet.has(redex);
           
           if (showAnswers) {
             // When showing answers, distinguish correct from incorrect
             if (isCorrect) {
               className += ' correct-redex';
-              console.log(`Applying correct-redex class to redex at ${selectionRange.start}-${selectionRange.end}`);
             } else {
               className += ' incorrect-selection';
-              console.log(`Applying incorrect-selection class to redex at ${selectionRange.start}-${selectionRange.end}`);
             }
           }
           
           // Convert positions from "without spaces" to "with spaces" for rendering
-          const startWithSpaces = positionWithSpaces(text, selectionRange.start);
-          const endWithSpaces = positionWithSpaces(text, selectionRange.end);
+          const startWithSpaces = positionWithSpaces(text, range.start);
+          const endWithSpaces = positionWithSpaces(text, range.end);
           
           // Build the full string with the highlighted portion
           const beforeText = text.substring(0, startWithSpaces);
