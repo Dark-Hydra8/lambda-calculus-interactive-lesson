@@ -138,7 +138,7 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
   const [responses, setResponses] = useState<Array<{
     question: LambdaObject;
     questionStr: string;
-    selectedRedexes: Application[];
+    selectedRedexes: SelectionRange[];
     correctRedexes: Application[];
     isCorrect: boolean;
   }>>([]);
@@ -294,25 +294,24 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
     
     // Find which correct redex range matches the current selection
     // Check if the selection range matches any correct redex range
-    const matchingRange = Array.from(redexToRangeMap.values()).find(range => 
-      range.start === currentSelection.start && range.end === currentSelection.end
-    );
+
+    console.log('currentSelection', currentSelection);
     
-    if (matchingRange) {
+    if (currentSelection) {
       // Selection matches a correct redex range - add it
       setConfirmedRedexes(prev => {
-        const rangeKey = `${matchingRange.start}-${matchingRange.end}`;
+        const rangeKey = `${currentSelection.start}-${currentSelection.end}`;
         // Check if this range is already confirmed
         const alreadyExists = prev.some(cr => 
-          cr.range.start === matchingRange.start && cr.range.end === matchingRange.end
+          cr.range.start === currentSelection.start && cr.range.end === currentSelection.end
         );
         
         if (alreadyExists) {
-          console.log(`Skipping duplicate: redex range at ${matchingRange.start}-${matchingRange.end}`);
+          // console.log(`Skipping duplicate: redex range at ${matchingRange.start}-${matchingRange.end}`);
           return prev;
         }
         
-        return [...prev, { range: { ...matchingRange } }];
+        return [...prev, { range: { ...currentSelection } }];
       });
     }
     
@@ -348,16 +347,10 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
     
     const isCorrect = allCorrectSelected && noIncorrectSelected && selectedRanges.length === correctRanges.length;
 
-    // Convert ranges back to redexes for response (for compatibility)
-    const selectedRedexes = selectedRanges.map(range => {
-      const rangeKey = `${range.start}-${range.end}`;
-      return rangeToRedexMap.get(rangeKey);
-    }).filter((redex): redex is Application => redex !== undefined);
-
     const response = {
       question: currentQuestion.question,
       questionStr: currentQuestion.questionStr,
-      selectedRedexes,
+      selectedRedexes: selectedRanges,
       correctRedexes: currentQuestion.correctRedexes,
       isCorrect,
     };
@@ -703,8 +696,7 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
               </span>
             ) : (
               <span className="incorrect">
-                Incorrect. You selected {res.selectedRedexes.length} redex{res.selectedRedexes.length !== 1 ? 'es' : ''}, 
-                but there {res.correctRedexes.length === 1 ? 'is' : 'are'} {res.correctRedexes.length} correct redex{res.correctRedexes.length !== 1 ? 'es' : ''}.
+                Incorrect. You selected {res.selectedRedexes.length} redex{res.selectedRedexes.length !== 1 ? 'es' : ''}.
               </span>
             )}
           </p>
@@ -748,7 +740,7 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
               wordBreak: 'break-word'
             }}>
               <div style={{ marginBottom: '10px', fontSize: '14px', color: '#666', fontWeight: 'bold' }}>
-                Confirmed Redexes ({confirmedRedexes.length}):
+                Confirmed Redexes:
               </div>
               {renderConfirmedRedexes()}
             </div>
@@ -756,8 +748,8 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
           
           <div style={{ marginBottom: '10px' }}>
             <p>
-              <strong>Confirmed redexes:</strong> {confirmedRedexes.length} | 
-              <strong> Target:</strong> {currentQuestion.correctRedexes.length} redex{currentQuestion.correctRedexes.length !== 1 ? 'es' : ''}
+              <strong>Confirmed redexes:</strong> {confirmedRedexes.length}
+
               {currentSelection && (
                 <span> | <strong>Current selection:</strong> {currentSelectionApps.length} redex{currentSelectionApps.length !== 1 ? 'es' : ''} found</span>
               )}
