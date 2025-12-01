@@ -22,6 +22,35 @@ type ApplicationRange = {
 
 let questions: Question[] = [];
 
+// Helper functions to convert between positions with and without spaces
+function positionWithoutSpaces(text: string, posWithSpaces: number): number {
+  // Count non-space characters up to posWithSpaces
+  let count = 0;
+  for (let i = 0; i < posWithSpaces && i < text.length; i++) {
+    if (text[i] !== ' ') {
+      count++;
+    }
+  }
+  return count;
+}
+
+function positionWithSpaces(text: string, posWithoutSpaces: number): number {
+  // Find the position in text (with spaces) that corresponds to posWithoutSpaces non-space characters
+  // posWithoutSpaces is 0-indexed (0 = first non-space char, 1 = second non-space char, etc.)
+  let count = 0;
+  let pos = 0;
+  while (pos < text.length && count <= posWithoutSpaces) {
+    if (text[pos] !== ' ') {
+      if (count === posWithoutSpaces) {
+        return pos;
+      }
+      count++;
+    }
+    pos++;
+  }
+  return pos; // Return end of string if not found
+}
+
 function new_question(): LambdaObject {
   let lambda: LambdaObject;
   let target;
@@ -33,11 +62,12 @@ function new_question(): LambdaObject {
 }
 
 // Build a mapping of character positions to Application objects
-// Traverses the tree and tracks character positions matching toString() behavior
+// Traverses the tree and tracks character positions WITHOUT counting spaces
 function buildApplicationRanges(
   obj: LambdaObject,
   startPos: number,
-  applicationRanges: ApplicationRange[]
+  applicationRanges: ApplicationRange[],
+  fullString: string
 ): number {
   if (obj instanceof Variable) {
     return startPos + obj.get_symbol().length;
@@ -46,7 +76,7 @@ function buildApplicationRanges(
     pos += 1; // λ
     pos += obj.get_parameter().get_symbol().length;
     pos += 1; // .
-    pos = buildApplicationRanges(obj.get_body(), pos, applicationRanges);
+    pos = buildApplicationRanges(obj.get_body(), pos, applicationRanges, fullString);
     return pos;
   } else if (obj instanceof Application) {
     const appStart = startPos;
@@ -59,14 +89,14 @@ function buildApplicationRanges(
     
     let pos = startPos;
     if (leftNeedsParens) pos += 1; // (
-    pos = buildApplicationRanges(obj.get_left(), pos, applicationRanges);
+    pos = buildApplicationRanges(obj.get_left(), pos, applicationRanges, fullString);
     if (leftNeedsParens) pos += 1; // )
-    pos += 1; // space
+    // Skip space - don't increment pos
     if (rightNeedsParens) pos += 1; // (
-    pos = buildApplicationRanges(obj.get_right(), pos, applicationRanges);
+    pos = buildApplicationRanges(obj.get_right(), pos, applicationRanges, fullString);
     if (rightNeedsParens) pos += 1; // )
     
-    // Record the range for this application
+    // Record the range for this application (positions without spaces)
     applicationRanges.push({
       application: obj,
       start: appStart,
@@ -129,10 +159,11 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
 
   const currentQuestion = questions[currentIndex];
   
-  // Build application ranges for the current question
+  // Build application ranges for the current question (positions without spaces)
   const applicationRanges = useMemo(() => {
     const ranges: ApplicationRange[] = [];
-    buildApplicationRanges(currentQuestion.question, 0, ranges);
+    const fullString = currentQuestion.questionStr;
+    buildApplicationRanges(currentQuestion.question, 0, ranges, fullString);
     // Sort by start position for easier processing
     ranges.sort((a, b) => a.start - b.start);
     return ranges;
@@ -202,9 +233,13 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
       endPos = startPos + selectionText.length;
     }
 
-    // Set the current selection if it's valid
-    if (startPos < endPos && endPos <= textContent.length) {
-      setCurrentSelection({ start: startPos, end: endPos });
+    // Convert positions to exclude spaces
+    const startPosWithoutSpaces = positionWithoutSpaces(textContent, startPos);
+    const endPosWithoutSpaces = positionWithoutSpaces(textContent, endPos);
+    
+    // Set the current selection if it's valid (using positions without spaces)
+    if (startPosWithoutSpaces < endPosWithoutSpaces) {
+      setCurrentSelection({ start: startPosWithoutSpaces, end: endPosWithoutSpaces });
     }
 
     // Clear the browser selection
@@ -409,34 +444,36 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
     // Build arrays of highlight ranges
     const highlights: Array<{ type: 'current' | 'missed', start: number, end: number, redex?: Application }> = [];
     
-    // Add current selection (if any)
+    // Add current selection (if any) - convert positions to include spaces
     if (currentSelection) {
+      const startWithSpaces = positionWithSpaces(text, currentSelection.start);
+      const endWithSpaces = positionWithSpaces(text, currentSelection.end);
       highlights.push({
         type: 'current',
-        start: currentSelection.start,
-        end: currentSelection.end
+        start: startWithSpaces,
+        end: endWithSpaces
       });
     }
     
-    // Add missed redexes when showing answers
+    // Add all correct redexes when showing answers - convert positions to include spaces
+    // Show all correct redexes (not just missed ones) and allow overlaps
     if (showAnswers) {
-      const confirmedSet = new Set(confirmedRedexes.map(cr => cr.redex));
       currentQuestion.correctRedexes.forEach(redex => {
-        if (!confirmedSet.has(redex)) {
-          const range = applicationRanges.find(r => r.application === redex);
-          if (range) {
-            highlights.push({
-              type: 'missed',
-              start: range.start,
-              end: range.end,
-              redex
-            });
-          }
+        const range = applicationRanges.find(r => r.application === redex);
+        if (range) {
+          const startWithSpaces = positionWithSpaces(text, range.start);
+          const endWithSpaces = positionWithSpaces(text, range.end);
+          highlights.push({
+            type: 'missed', // Using 'missed' type for correct answer display
+            start: startWithSpaces,
+            end: endWithSpaces,
+            redex
+          });
         }
       });
     }
     
-    // Create an array to track which highlights cover each character position
+    // Create an array to track which highlights cover each character position (with spaces)
     const charHighlights: Array<Array<{ type: 'current' | 'missed', redex?: Application }>> = [];
     for (let i = 0; i < text.length; i++) {
       charHighlights[i] = highlights.filter(h => i >= h.start && i < h.end);
@@ -447,12 +484,22 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
     let currentGroup: { highlights: Array<{ type: 'current' | 'missed', redex?: Application }>, start: number, end: number } | null = null;
     
     // Helper to compare highlight sets
+    // For correct answer highlights, allow overlaps - compare by redex identity
     const highlightsEqual = (a: Array<{ type: 'current' | 'missed', redex?: Application }>, b: Array<{ type: 'current' | 'missed', redex?: Application }>): boolean => {
       if (a.length !== b.length) return false;
-      // For current selections, we don't need to compare redex, just type
-      const aTypes = new Set(a.map(h => h.type));
-      const bTypes = new Set(b.map(h => h.type));
-      return aTypes.size === bTypes.size && Array.from(aTypes).every(type => bTypes.has(type));
+      // For missed redexes (correct answers), compare by redex identity to allow overlaps
+      // For current selections, compare by type
+      const aRedexes = new Set(a.filter(h => h.type === 'missed' && h.redex).map(h => h.redex));
+      const bRedexes = new Set(b.filter(h => h.type === 'missed' && h.redex).map(h => h.redex));
+      const aCurrent = a.some(h => h.type === 'current');
+      const bCurrent = b.some(h => h.type === 'current');
+      
+      // Check if redex sets match (allowing overlaps)
+      const redexesMatch = aRedexes.size === bRedexes.size && 
+        Array.from(aRedexes).every(redex => bRedexes.has(redex));
+      const currentMatch = aCurrent === bCurrent;
+      
+      return redexesMatch && currentMatch;
     };
     
     for (let i = 0; i <= text.length; i++) {
@@ -480,7 +527,45 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
             // Has highlights - determine styling
             let className = 'text-selection';
             const hasCurrent = currentGroup.highlights.some(h => h.type === 'current');
-            const hasMissed = currentGroup.highlights.some(h => h.type === 'missed');
+            const missedHighlights = currentGroup.highlights.filter(h => h.type === 'missed');
+            const hasMissed = missedHighlights.length > 0;
+            const hasMultipleMissed = missedHighlights.length > 1;
+            
+            // Calculate nesting depth for missed highlights (correct answers)
+            // Outer highlights (fewer containing highlights) should have larger boxes
+            let minNestingDepth = Infinity;
+            if (hasMissed && showAnswers) {
+              const allMissedHighlights = highlights.filter(h => h.type === 'missed');
+              missedHighlights.forEach(h => {
+                if (h.redex) {
+                  const range = applicationRanges.find(r => r.application === h.redex);
+                  if (range) {
+                    const startWithSpaces = positionWithSpaces(text, range.start);
+                    const endWithSpaces = positionWithSpaces(text, range.end);
+                    // Count how many other missed highlights contain this one
+                    let containingCount = 0;
+                    allMissedHighlights.forEach(otherH => {
+                      if (otherH.redex && otherH.redex !== h.redex) {
+                        const otherRange = applicationRanges.find(r => r.application === otherH.redex);
+                        if (otherRange) {
+                          const otherStart = positionWithSpaces(text, otherRange.start);
+                          const otherEnd = positionWithSpaces(text, otherRange.end);
+                          // Check if other highlight fully contains this one
+                          if (otherStart <= startWithSpaces && otherEnd >= endWithSpaces) {
+                            containingCount++;
+                          }
+                        }
+                      }
+                    });
+                    minNestingDepth = Math.min(minNestingDepth, containingCount);
+                  }
+                }
+              });
+              // If no containing highlights found, it's at depth 0 (outermost)
+              if (minNestingDepth === Infinity) {
+                minNestingDepth = 0;
+              }
+            }
             
             if (hasCurrent && hasMissed) {
               // Overlapping current and missed
@@ -488,13 +573,45 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
             } else if (hasCurrent) {
               className += ' current-selection';
             } else if (hasMissed) {
-              className += ' missed-redex';
+              // Use correct-redex (green) for all answer highlights
+              className += ' correct-redex';
+              if (hasMultipleMissed) {
+                className += ' overlapping-highlight';
+              }
+            }
+            
+            // Apply different sizes based on nesting depth (larger for outer highlights)
+            let highlightStyle: React.CSSProperties | undefined = undefined;
+            if (hasMissed && showAnswers) {
+              // Outer highlights (depth 0): larger padding and outline
+              // Inner highlights: smaller padding and outline, scaled down
+              const basePadding = 2;
+              const paddingReduction = minNestingDepth * 0.5;
+              const padding = Math.max(0.5, basePadding - paddingReduction);
+              
+              const baseOutlineWidth = 5;
+              const outlineReduction = minNestingDepth * 1.5;
+              const outlineWidth = Math.max(1, baseOutlineWidth - outlineReduction);
+              
+              // Scale down inner highlights (depth > 0)
+              const scale = minNestingDepth > 0 ? Math.max(0.85, 1 - minNestingDepth * 0.1) : 1;
+              
+              highlightStyle = {
+                padding: `${padding}px 0`,
+                outlineWidth: `${outlineWidth}px`,
+                outlineStyle: 'solid',
+                outlineColor: '#28a745',
+                transform: scale < 1 ? `scale(${scale})` : undefined,
+                transformOrigin: 'center',
+                display: 'inline-block'
+              };
             }
             
             elements.push(
               <span
                 key={`highlight-${currentGroup.start}`}
                 className={className}
+                style={highlightStyle}
               >
                 {groupText}
               </span>
@@ -586,10 +703,14 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
             }
           }
           
+          // Convert positions from "without spaces" to "with spaces" for rendering
+          const startWithSpaces = positionWithSpaces(text, selectionRange.start);
+          const endWithSpaces = positionWithSpaces(text, selectionRange.end);
+          
           // Build the full string with the highlighted portion
-          const beforeText = text.substring(0, selectionRange.start);
-          const highlightedText = text.substring(selectionRange.start, selectionRange.end);
-          const afterText = text.substring(selectionRange.end);
+          const beforeText = text.substring(0, startWithSpaces);
+          const highlightedText = text.substring(startWithSpaces, endWithSpaces);
+          const afterText = text.substring(endWithSpaces);
           
           return (
             <div
@@ -711,23 +832,6 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
             </div>
           </div>
 
-          {showAnswers && (
-            <div style={{ 
-              marginBottom: '15px', 
-              padding: '10px', 
-              backgroundColor: '#fff3cd', 
-              border: '1px solid #ffc107',
-              borderRadius: '4px',
-              fontSize: '14px'
-            }}>
-              <p style={{ margin: 0 }}>
-                <strong>Legend:</strong>{' '}
-                <span style={{ backgroundColor: '#d4edda', padding: '2px 6px', borderRadius: '3px' }}>Green</span> = Correct redex,{' '}
-                <span style={{ backgroundColor: '#f8d7da', padding: '2px 6px', borderRadius: '3px' }}>Red</span> = Incorrect selection,{' '}
-                <span style={{ backgroundColor: '#fff3cd', padding: '2px 6px', borderRadius: '3px' }}>Yellow</span> = Missed redex
-              </p>
-            </div>
-          )}
 
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <button onClick={handleSubmit} disabled={isSubmitted}>
