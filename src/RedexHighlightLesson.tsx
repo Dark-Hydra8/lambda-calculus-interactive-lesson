@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import './styles.css';
 import { LambdaObject, Variable, Application, Lambda } from './lambda_ir';
 import { random_lambda } from './random_lambda';
+import { Parser } from './parser';
 
 type Question = {
   question: LambdaObject;
@@ -384,7 +385,19 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
       setShowAnswers(false);
       setIsSubmitted(false);
     } else {
-      setShowResult(true);
+      // Generate new question
+      const newQuestion = new_question();
+      const newCorrectRedexes = newQuestion.redexes();
+      questions.push({
+        question: newQuestion,
+        questionStr: String(newQuestion),
+        correctRedexes: newCorrectRedexes,
+      });
+      setCurrentIndex(currentIndex + 1);
+      setConfirmedRedexes([]);
+      setCurrentSelection(null);
+      setShowAnswers(false);
+      setIsSubmitted(false);
     }
   };
 
@@ -417,21 +430,32 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
       });
     }
     
-    // Add all correct redexes when showing answers - convert positions to include spaces
-    // Show all correct redexes (not just missed ones) and allow overlaps
-    // Use redex_ranges() to get the correct ranges
+    // Create bracket color map for showing correct redexes with colored brackets
+    // Maps position to array of { color, type: 'start' | 'end' } to handle multiple brackets at same position
+    const bracketMap = new Map<number, Array<{ color: string, type: 'start' | 'end' }>>();
+    const redexColors = ['#28a745', '#007bff', '#ffc107', '#dc3545', '#6f42c1', '#20c997', '#fd7e14', '#e83e8c'];
+    
     if (showAnswers) {
-      currentQuestion.correctRedexes.forEach(redex => {
+      // Assign a unique color to each redex and mark its start and end positions with brackets
+      currentQuestion.correctRedexes.forEach((redex, index) => {
         const range = redexToRangeMap.get(redex);
         if (range) {
           const startWithSpaces = positionWithSpaces(text, range.start);
-          const endWithSpaces = positionWithSpaces(text, range.end);
-          highlights.push({
-            type: 'missed', // Using 'missed' type for correct answer display
-            start: startWithSpaces,
-            end: endWithSpaces,
-            redex
-          });
+          // range.end is exclusive, so the last character is at range.end - 1
+          const endWithSpaces = positionWithSpaces(text, range.end - 1);
+          const color = redexColors[index % redexColors.length];
+          
+          // Mark start position with opening bracket
+          if (!bracketMap.has(startWithSpaces)) {
+            bracketMap.set(startWithSpaces, []);
+          }
+          bracketMap.get(startWithSpaces)!.push({ color, type: 'start' });
+          
+          // Mark end position (last character of redex) with closing bracket
+          if (!bracketMap.has(endWithSpaces)) {
+            bracketMap.set(endWithSpaces, []);
+          }
+          bracketMap.get(endWithSpaces)!.push({ color, type: 'end' });
         }
       });
     }
@@ -479,97 +503,79 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
         if (currentGroup) {
           const groupText = text.substring(currentGroup.start, currentGroup.end);
           
+          // Helper function to render text with colored brackets
+          const renderTextWithBrackets = (startIdx: number, endIdx: number) => {
+            const renderedChars: React.ReactNode[] = [];
+            for (let j = startIdx; j < endIdx; j++) {
+              const bracketInfos = bracketMap.get(j);
+              const char = text[j];
+              
+              if (bracketInfos && bracketInfos.length > 0) {
+                // Render all opening brackets first
+                bracketInfos.forEach((bracketInfo, idx) => {
+                  if (bracketInfo.type === 'start') {
+                    renderedChars.push(
+                      <span key={`bracket-start-${j}-${idx}`} style={{ color: bracketInfo.color, fontWeight: 'bold', fontSize: '1.2em' }}>
+                        [
+                      </span>
+                    );
+                  }
+                });
+                
+                // Render the character
+                renderedChars.push(char);
+                
+                // Render all closing brackets after
+                bracketInfos.forEach((bracketInfo, idx) => {
+                  if (bracketInfo.type === 'end') {
+                    renderedChars.push(
+                      <span key={`bracket-end-${j}-${idx}`} style={{ color: bracketInfo.color, fontWeight: 'bold', fontSize: '1.2em' }}>
+                        ]
+                      </span>
+                    );
+                  }
+                });
+              } else {
+                renderedChars.push(char);
+              }
+            }
+            return renderedChars;
+          };
+          
           if (currentGroup.highlights.length === 0) {
-            // No highlights - just plain text
+            // No highlights - render with colored brackets if needed
+            const renderedChars = renderTextWithBrackets(currentGroup.start, currentGroup.end);
             elements.push(
               <span key={`text-${currentGroup.start}`}>
-                {groupText}
+                {renderedChars}
               </span>
             );
           } else {
             // Has highlights - determine styling
             let className = 'text-selection';
             const hasCurrent = currentGroup.highlights.some(h => h.type === 'current');
-            const missedHighlights = currentGroup.highlights.filter(h => h.type === 'missed');
-            const hasMissed = missedHighlights.length > 0;
-            const hasMultipleMissed = missedHighlights.length > 1;
             
-            // Calculate nesting depth for missed highlights (correct answers)
-            // Outer highlights (fewer containing highlights) should have larger boxes
-            // Use redex_ranges() to get the correct ranges
-            let minNestingDepth = Infinity;
-            if (hasMissed && showAnswers) {
-              const allMissedHighlights = highlights.filter(h => h.type === 'missed');
-              missedHighlights.forEach(h => {
-                if (h.redex) {
-                  const range = redexToRangeMap.get(h.redex);
-                  if (range) {
-                    const startWithSpaces = positionWithSpaces(text, range.start);
-                    const endWithSpaces = positionWithSpaces(text, range.end);
-                    // Count how many other missed highlights contain this one
-                    let containingCount = 0;
-                    allMissedHighlights.forEach(otherH => {
-                      if (otherH.redex && otherH.redex !== h.redex) {
-                        const otherRange = redexToRangeMap.get(otherH.redex);
-                        if (otherRange) {
-                          const otherStart = positionWithSpaces(text, otherRange.start);
-                          const otherEnd = positionWithSpaces(text, otherRange.end);
-                          // Check if other highlight fully contains this one
-                          if (otherStart <= startWithSpaces && otherEnd >= endWithSpaces) {
-                            containingCount++;
-                          }
-                        }
-                      }
-                    });
-                    minNestingDepth = Math.min(minNestingDepth, containingCount);
-                  }
-                }
-              });
-              // If no containing highlights found, it's at depth 0 (outermost)
-              if (minNestingDepth === Infinity) {
-                minNestingDepth = 0;
-              }
-            }
-            
-            if (hasCurrent && hasMissed) {
-              // Overlapping current and missed
-              className += ' current-selection overlapping-highlight';
-            } else if (hasCurrent) {
+            if (hasCurrent) {
               className += ' current-selection';
-            } else if (hasMissed) {
-              // Use correct-redex (green) for all answer highlights
-              className += ' correct-redex';
-              if (hasMultipleMissed) {
-                className += ' overlapping-highlight';
-              }
             }
+            // When showing answers, use colored brackets instead of highlights
             
-            // Apply different sizes based on nesting depth (larger for outer highlights)
+            // Apply styling for current selection only
             let highlightStyle: React.CSSProperties | undefined = undefined;
-            if (hasMissed && showAnswers) {
-              // Outer highlights (depth 0): larger padding and outline
-              // Inner highlights: smaller padding and outline, scaled down
-              const basePadding = 2;
-              const paddingReduction = minNestingDepth * 0.5;
-              const padding = Math.max(0.5, basePadding - paddingReduction);
-              
-              const baseOutlineWidth = 5;
-              const outlineReduction = minNestingDepth * 1.5;
-              const outlineWidth = Math.max(1, baseOutlineWidth - outlineReduction);
-              
-              // Scale down inner highlights (depth > 0)
-              const scale = minNestingDepth > 0 ? Math.max(0.85, 1 - minNestingDepth * 0.1) : 1;
-              
+            if (hasCurrent) {
               highlightStyle = {
-                padding: `${padding}px 0`,
-                outlineWidth: `${outlineWidth}px`,
+                padding: '2px 0',
+                outlineWidth: '2px',
                 outlineStyle: 'solid',
-                outlineColor: '#28a745',
-                transform: scale < 1 ? `scale(${scale})` : undefined,
-                transformOrigin: 'center',
+                outlineColor: '#007bff',
                 display: 'inline-block'
               };
             }
+            
+            // Render text with brackets if showing answers
+            const renderedText = showAnswers 
+              ? renderTextWithBrackets(currentGroup.start, currentGroup.end)
+              : groupText;
             
             elements.push(
               <span
@@ -577,7 +583,7 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
                 className={className}
                 style={highlightStyle}
               >
-                {groupText}
+                {renderedText}
               </span>
             );
           }
