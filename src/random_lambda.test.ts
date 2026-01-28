@@ -1,5 +1,9 @@
 import { random_lambda } from './random_lambda';
 
+test("ignore this test", () => {
+	expect(true).toEqual(true);
+});
+
 /*
 test("check random lambda", () => {
 	for (let i = 0; i < 50; i++) {

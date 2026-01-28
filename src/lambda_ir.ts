@@ -1,3 +1,9 @@
+let debug = false;
+
+export function set_debug(value: boolean) : void {
+	debug = value;
+}
+
 function sets_eq<T>(set1: Set<T>, set2: Set<T>): boolean {
 	if (set1.size !== set2.size) {
 		return false;
@@ -22,6 +28,46 @@ export function norm_ord_reduce(obj: LambdaObject) : LambdaObject | null {
 		result = obj;
 	}
 	return result;
+}
+
+export function all_variables(obj: LambdaObject): Set<string> {
+	const variables = new Set<string>();
+	
+	const collect_variables = (node: LambdaObject): void => {
+		if (node instanceof Variable) {
+			variables.add(node.get_symbol());
+		} else if (node instanceof Lambda) {
+			// Add the parameter
+			variables.add(node.get_parameter().get_symbol());
+			// Recursively collect from the body
+			collect_variables(node.get_body());
+		} else if (node instanceof Application) {
+			// Recursively collect from left and right
+			collect_variables(node.get_left());
+			collect_variables(node.get_right());
+		} else {
+			throw new Error(`Unknown node type: ${node}`);
+		}
+	};
+	
+	collect_variables(obj);
+	return variables;
+}
+
+export function max_redex_height(obj: LambdaObject) : number {
+	if (obj instanceof Variable) {
+		return 0;
+	} else if (obj instanceof Lambda) {
+		return max_redex_height(obj.get_body());
+	} else if (obj instanceof Application) {
+		let height = Math.max(max_redex_height(obj.get_left()), max_redex_height(obj.get_right()));
+		if (obj.get_left() instanceof Lambda) {
+			height++;
+		}
+		return height;
+	} else {
+		throw new Error(`Unknown node type: ${obj}`);
+	}
 }
 
 class VariableName {
@@ -284,6 +330,9 @@ export class Lambda extends LambdaTree {
 	}
 
 	public eq(other: LambdaObject, var_mapping: VariableMapping | null) : boolean {
+		if (debug) {
+			console.log(`this: ${this} other: ${other}`);
+		}
 		if (!(other instanceof Lambda)) {
 			return false;
 		}
@@ -422,6 +471,9 @@ export class Application extends LambdaTree {
 	}
 	
 	public eq(other: LambdaObject, var_mapping: VariableMapping | null) : boolean {
+		if (debug) {
+		console.log(`this: ${this} other: ${other}`);
+		}
 		if (!(other instanceof Application)) {
 			return false;
 		}
@@ -471,6 +523,9 @@ export class Variable extends LambdaObject {
 	}
 	
 	public eq(other: LambdaObject, var_mapping: VariableMapping | null) : boolean {
+		if (debug) {
+			console.log(`this: ${this} other: ${other}`);
+		}
 		if (!(other instanceof Variable)) {
 			return false;
 		}

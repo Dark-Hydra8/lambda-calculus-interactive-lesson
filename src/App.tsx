@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import './styles.css';
 import { NormalOrderLesson } from './NormalOrderLesson';
 import { RedexHighlightLesson } from './RedexHighlightLesson';
+import { AlphaRenameLesson } from './AlphaRenameLesson';
 
-type Lesson = 'menu' | 'normal-order' | 'redex-highlight';
+type Lesson = 'menu' | 'normal-order' | 'redex-highlight' | 'alpha-rename';
 
 const App: React.FC = () => {
   const [currentLesson, setCurrentLesson] = useState<Lesson>('menu');
@@ -14,6 +15,10 @@ const App: React.FC = () => {
 
   if (currentLesson === 'redex-highlight') {
     return <RedexHighlightLesson onBack={() => setCurrentLesson('menu')} />;
+  }
+
+  if (currentLesson === 'alpha-rename') {
+    return <AlphaRenameLesson onBack={() => setCurrentLesson('menu')} />;
   }
 
   return (
@@ -31,6 +36,10 @@ const App: React.FC = () => {
         <div className="lesson-card" onClick={() => setCurrentLesson('redex-highlight')}>
           <h2>Redex Highlighting</h2>
           <p>Identify and highlight all redexes (applications where the left side is a lambda abstraction) in lambda calculus expressions.</p>
+        </div>
+        <div className="lesson-card" onClick={() => setCurrentLesson('alpha-rename')}>
+          <h2>Alpha Renaming</h2>
+          <p>Learn alpha renaming by selecting which variables in a redex should be renamed to avoid variable capture.</p>
         </div>
       </div>
     </div>

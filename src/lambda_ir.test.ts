@@ -1,4 +1,4 @@
-import { Application, Lambda, Variable, LambdaObject, norm_ord_reduce } from './lambda_ir';
+import { Application, Lambda, Variable, LambdaObject, norm_ord_reduce, set_debug } from './lambda_ir';
 import { Parser } from './parser';
 import { replace_globals } from "./handle_dependencies";
 
@@ -326,4 +326,34 @@ test("test redex_ranges function", () => {
 		expect(range.end).toBeLessThanOrEqual(lambdaWithRedexStr.length);
 		expect(range.start).toBeLessThan(range.end);
 	}
+});
+
+test("test alpha renaming functionality", () => {
+	let lambdaObjs = new Parser(
+		"(λx.λy.x) y\n" +
+		"λy'.y"
+	).parse_input() as LambdaObject[];
+	let reduced = norm_ord_reduce(lambdaObjs[0]) as LambdaObject;
+	expect(reduced.eq(lambdaObjs[1], null)).toEqual(true);
+
+	lambdaObjs = new Parser(
+		"z((λx.λy.x) y x)\n" +
+		"z((λy'.y) x)"
+	).parse_input() as LambdaObject[];
+	reduced = norm_ord_reduce(lambdaObjs[0]) as LambdaObject;
+	expect(reduced.eq(lambdaObjs[1], null)).toEqual(true);
+
+	lambdaObjs = new Parser(
+		"(λx.λy.λz.λy.x) (y z)\n" +
+		"λy'.λz'.λy'. y z"
+	).parse_input() as LambdaObject[];
+	reduced = norm_ord_reduce(lambdaObjs[0]) as LambdaObject;
+	expect(reduced.eq(lambdaObjs[1], null)).toEqual(true);
+
+	lambdaObjs = new Parser(
+		"(λx.λy'.λy.x) y\n" +
+		"λy'.λy''.y"
+	).parse_input() as LambdaObject[];
+	reduced = norm_ord_reduce(lambdaObjs[0]) as LambdaObject;
+	expect(reduced.eq(lambdaObjs[1], null)).toEqual(true);
 });
