@@ -170,6 +170,19 @@ export abstract class LambdaObject {
 		return this.parent;
 	}
 
+	public all_variables() : Variable[] {
+		let variables = [];
+		if (this instanceof Variable) {
+			variables.push(this);
+		} else if (this instanceof LambdaTree) {
+			variables.push(...this.get_left().all_variables());
+			variables.push(...this.get_right().all_variables());
+		} else {
+			throw new Error(`Unknown node type: ${this}`);
+		}
+		return variables;
+	}
+
 	public abstract copy() : LambdaObject;
 	public abstract redexes() : Application[];
 	public abstract redex_ranges() : Range[];
@@ -533,6 +546,28 @@ export class Variable extends LambdaObject {
 			var_mapping = new VariableMapping();
 		}
 		return var_mapping.same(this.get_symbol(), other.get_symbol());
+	}
+
+	public get_bound_lambda() : Lambda | null {
+		let parent = this.get_parent();
+		while (parent !== null) {
+			if (parent instanceof Lambda && parent.get_parameter().get_symbol() === this.get_symbol()) {
+				return parent;
+			}
+			parent = parent.get_parent();
+		}
+		return null;
+	}
+
+	public is_parameter() : boolean {
+		let parent = this.get_parent();
+		let is_parameter;
+		if (parent instanceof Lambda) {
+			is_parameter = parent.get_parameter() === this;
+		} else {
+			is_parameter = false;
+		}
+		return is_parameter;
 	}
 }
 

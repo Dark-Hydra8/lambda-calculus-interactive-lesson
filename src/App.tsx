@@ -3,8 +3,10 @@ import './styles.css';
 import { NormalOrderLesson } from './NormalOrderLesson';
 import { RedexHighlightLesson } from './RedexHighlightLesson';
 import { AlphaRenameLesson } from './AlphaRenameLesson';
+import { BodyOfAbstractionLesson } from './BodyOfAbstractionLesson';
+import { VariableBindingLesson } from './VariableBindingLesson';
 
-type Lesson = 'menu' | 'normal-order' | 'redex-highlight' | 'alpha-rename';
+type Lesson = 'menu' | 'normal-order' | 'redex-highlight' | 'alpha-rename' | 'body-of-abstraction' | 'variable-binding';
 
 const App: React.FC = () => {
   const [currentLesson, setCurrentLesson] = useState<Lesson>('menu');
@@ -19,6 +21,14 @@ const App: React.FC = () => {
 
   if (currentLesson === 'alpha-rename') {
     return <AlphaRenameLesson onBack={() => setCurrentLesson('menu')} />;
+  }
+
+  if (currentLesson === 'body-of-abstraction') {
+    return <BodyOfAbstractionLesson onBack={() => setCurrentLesson('menu')} />;
+  }
+
+  if (currentLesson === 'variable-binding') {
+    return <VariableBindingLesson onBack={() => setCurrentLesson('menu')} />;
   }
 
   return (
@@ -40,6 +50,14 @@ const App: React.FC = () => {
         <div className="lesson-card" onClick={() => setCurrentLesson('alpha-rename')}>
           <h2>Alpha Renaming</h2>
           <p>Learn alpha renaming by selecting which variables in a redex should be renamed to avoid variable capture.</p>
+        </div>
+        <div className="lesson-card" onClick={() => setCurrentLesson('body-of-abstraction')}>
+          <h2>Bodies of Abstraction</h2>
+          <p>Identify and highlight all bodies of abstraction (the expression after the dot in lambda abstractions) in lambda calculus expressions.</p>
+        </div>
+        <div className="lesson-card" onClick={() => setCurrentLesson('variable-binding')}>
+          <h2>Variable Binding</h2>
+          <p>For each variable in a lambda expression, identify which lambda abstraction it is bound to (or mark it as a free variable).</p>
         </div>
       </div>
     </div>

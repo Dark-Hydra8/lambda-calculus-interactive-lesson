@@ -29,6 +29,9 @@ function new_question(): LambdaObject {
 	  case 0: // Two  nested relexes with no renaming
       is_accepted = (lambda_object: LambdaObject) => {
         let reduced = norm_ord_reduce(lambda_object.copy()) as LambdaObject;
+        if (reduced === null) {
+            return false;
+        }
         let all_vars = all_variables(reduced);
         
         return lambda_object.redexes().length === 2
@@ -39,6 +42,9 @@ function new_question(): LambdaObject {
 		case 1: // Two  nested relexes with renaming
       is_accepted = (lambda_object: LambdaObject) => {
         let reduced = norm_ord_reduce(lambda_object.copy()) as LambdaObject;
+        if (reduced === null) {
+            return false;
+          }
         let all_vars = all_variables(reduced);
 
         return lambda_object.redexes().length === 2
@@ -49,6 +55,9 @@ function new_question(): LambdaObject {
     case 3: // Multiple nested relexes with no renaming
       is_accepted = (lambda_object: LambdaObject) => {
         let reduced = norm_ord_reduce(lambda_object.copy()) as LambdaObject;
+        if (reduced === null) {
+            return false;
+          }
         let all_vars = all_variables(reduced);
 
         return lambda_object.redexes().length === 2
@@ -59,6 +68,9 @@ function new_question(): LambdaObject {
     case 4: // Multiple nested relexes with renaming
       is_accepted = (lambda_object: LambdaObject) => {
         let reduced = norm_ord_reduce(lambda_object.copy()) as LambdaObject;
+        if (reduced === null) {
+          return false;
+        }
         let all_vars = all_variables(reduced);
 
         return lambda_object.redexes().length === 2
@@ -185,14 +197,11 @@ export const AlphaRenameLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
   // Initialize questions
   if (questions.length === 0) {
     const question = new_question();
-    const redexes = question.redexes();
-    if (redexes.length !== 1) {
-      throw new Error('Expected exactly one redex');
-    }
+    const redex = question.norm_ord_redex() as Application;
     questions.push({
       question,
       questionStr: String(question),
-      redex: redexes[0]
+      redex: redex
     });
   }
 
@@ -277,14 +286,11 @@ export const AlphaRenameLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
   const handleNext = () => {
     // Generate new question
     const newQuestion = new_question();
-    const newRedexes = newQuestion.redexes();
-    if (newRedexes.length !== 1) {
-      throw new Error('Expected exactly one redex');
-    }
+    const newRedex = newQuestion.norm_ord_redex() as Application;
     questions.push({
       question: newQuestion,
       questionStr: String(newQuestion),
-      redex: newRedexes[0]
+      redex: newRedex
     });
     setCurrentIndex(currentIndex + 1);
     setSelectedOccurrences(new Set());
