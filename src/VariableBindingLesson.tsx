@@ -71,15 +71,17 @@ function findVariableOccurrencesWithBinding(
 
 function newQuestion(): LambdaObject {
   let lambda: LambdaObject;
-  let variables: Variable[];
+  let bound_variables: number;
+  let total_variables: number;
   do {
     lambda = random_lambda(['x', 'y', 'z'], 4);
-    variables = lambda.all_variables();
-    console.log('before', variables.map((v) => v.get_symbol()));
-    variables = variables.filter((v) => !v.is_parameter() && v.get_bound_lambda() !== null);
-    console.log('after', variables.map((v) => v.get_symbol()));
-    console.log(lambda.toString(), variables.map((v) => v.get_symbol()));
-  } while (variables.length < 2);
+    let variables = lambda.all_variables();
+    variables = variables.filter((v) => !v.is_parameter());
+    total_variables = variables.length;
+    variables = variables.filter((v) => v.get_bound_lambda() !== null);
+    bound_variables = variables.length;
+  } while (bound_variables < 3 || String(lambda).length > 50 || total_variables > 7 || bound_variables / total_variables < 0.25 || bound_variables / total_variables > 0.95);
+  console.log(bound_variables, total_variables, bound_variables / total_variables);
   return lambda;
 }
 
@@ -287,7 +289,6 @@ export const VariableBindingLesson: React.FC<{ onBack: () => void }> = ({ onBack
   };
 
   const handleReset = () => {
-    setSelections({});
     setIsSubmitted(false);
     setShowAnswer(false);
   };
