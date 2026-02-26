@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/lambda-calculus-interactive-lesson/static/css/main.bd0c32fa.css",
+    "main.js": "/lambda-calculus-interactive-lesson/static/js/main.e264f2f0.js",
+    "static/js/453.c48111e6.chunk.js": "/lambda-calculus-interactive-lesson/static/js/453.c48111e6.chunk.js",
+    "index.html": "/lambda-calculus-interactive-lesson/index.html",
+    "main.bd0c32fa.css.map": "/lambda-calculus-interactive-lesson/static/css/main.bd0c32fa.css.map",
+    "main.e264f2f0.js.map": "/lambda-calculus-interactive-lesson/static/js/main.e264f2f0.js.map",
+    "453.c48111e6.chunk.js.map": "/lambda-calculus-interactive-lesson/static/js/453.c48111e6.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.bd0c32fa.css",
+    "static/js/main.e264f2f0.js"
+  ]
+}
