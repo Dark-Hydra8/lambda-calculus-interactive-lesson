@@ -282,7 +282,6 @@ export class Lambda extends LambdaTree {
 	}
 
 	public replace(variable: Variable, replacement: LambdaObject) : void {
-		let this_call = count++;
 		if (!variable.eq(this.left, null) && this.get_free_vars().has(variable.get_symbol())) {
 			let parameter = (this.left as Variable).get_symbol();
 			if (replacement.get_free_vars().has(parameter)) {
@@ -431,7 +430,7 @@ export class Application extends LambdaTree {
 		}
 
 		if (this.right instanceof Application
-		    || this.right instanceof Lambda && this.parent instanceof Application && this.parent.left === this) {
+		    || (this.right instanceof Lambda && this.parent instanceof Application && this.parent.left === this)) {
 			start++;
 		}
 
@@ -459,7 +458,7 @@ export class Application extends LambdaTree {
 
 		let right;
 		if (this.right instanceof Application
-		    || this.right instanceof Lambda && this.parent instanceof Application && this.parent.left === this) {
+		    || (this.right instanceof Lambda && this.parent instanceof Application && this.parent.left === this)) {
 			right = `(${this.right})`;
 		} else {
 			right = String(this.right);

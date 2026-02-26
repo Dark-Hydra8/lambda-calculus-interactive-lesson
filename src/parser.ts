@@ -1,7 +1,8 @@
 import { LambdaLexer, TokenType, LambdaToken, LambdaSyntaxError } from './lexer';
-import { Lambda, Variable, Application, LambdaObject, LambdaTree, Assignment } from './lambda_ir';
+import { Lambda, Variable, Application, LambdaObject, Assignment } from './lambda_ir';
 
-function assert(value: boolean) : asserts value {}
+// Used during testing
+// function assert(value: boolean) : asserts value {}
 
 export class Parser {
 	private lexer: LambdaLexer;
@@ -148,7 +149,7 @@ export class Parser {
 
 	public parse_new_lines() : void {
 		// console.log("parse_new_lines");
-		let token = this.expect(TokenType.new_line);
+		this.expect(TokenType.new_line);
 		if (this.peek().is_type(TokenType.new_line)) {
 			this.parse_new_lines();
 		}

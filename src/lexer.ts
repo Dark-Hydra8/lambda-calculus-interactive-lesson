@@ -1,3 +1,16 @@
+export enum TokenType {
+	lambda = "lambda",
+	dot = "dot",
+	lparen = "lparen",
+	rparen = "rparen",
+	equals = "=",
+	variable = "variable",
+	whitespace = "white_space",
+	new_line = "new_line",
+	end_of_input = "end_of_input",
+	number = "number"
+}
+
 class GenericSyntaxError<TokenTypeType> extends Error {
 	protected found: TokenTypeType | null;
 	protected expected: (TokenTypeType | null)[]; 
@@ -209,19 +222,6 @@ export class LambdaLexerError extends GenericLexerError {
 	public static from_generic_error(error: GenericLexerError) : LambdaLexerError {
 		return new LambdaLexerError(error.get_malformed_str(), error.get_index());
 	}
-}
-
-export enum TokenType {
-	lambda = "lambda",
-	dot = "dot",
-	lparen = "lparen",
-	rparen = "rparen",
-	equals = "=",
-	variable = "variable",
-	whitespace = "white_space",
-	new_line = "new_line",
-	end_of_input = "end_of_input",
-	number = "number"
 }
 
 export class LambdaToken extends GenericToken<TokenType> {
