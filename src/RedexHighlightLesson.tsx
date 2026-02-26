@@ -204,12 +204,6 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
     return map;
   }, [redexToRangeMap]);
 
-  // Get applications covered by current selection
-  const currentSelectionApps = useMemo(() => {
-    if (!currentSelection) return [];
-    return findApplicationsInRange(currentSelection, applicationRanges);
-  }, [currentSelection, applicationRanges]);
-
   const correctRedexesSet = useMemo(() => {
     return new Set(currentQuestion.correctRedexes);
   }, [currentIndex]);
@@ -321,6 +315,16 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
     isProcessingRef.current = false;
   };
 
+
+  const handleClearCurrentSelection = () => {
+    setCurrentSelection(null);
+  };
+
+  const handleRemoveConfirmed = (rangeKey: string) => {
+    setConfirmedRedexes(prev =>
+      prev.filter(cr => `${cr.range.start}-${cr.range.end}` !== rangeKey)
+    );
+  };
 
   const handleClearAll = () => {
     setConfirmedRedexes([]);
@@ -664,16 +668,25 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
           return (
             <div
               key={`confirmed-redex-${index}`}
-              style={{ marginBottom: '8px' }}
+              style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}
             >
-              <span>{beforeText}</span>
-              <span
-                className={className}
-                style={{ cursor: 'default', display: 'inline' }}
-              >
-                {highlightedText}
+              <span style={{ flex: '1 1 auto', minWidth: 0 }}>
+                <span>{beforeText}</span>
+                <span
+                  className={className}
+                  style={{ cursor: 'default', display: 'inline' }}
+                >
+                  {highlightedText}
+                </span>
+                <span>{afterText}</span>
               </span>
-              <span>{afterText}</span>
+              <button
+                type="button"
+                onClick={() => handleRemoveConfirmed(rangeKey)}
+                style={{ fontSize: '12px', padding: '4px 8px', flexShrink: 0 }}
+              >
+                Remove
+              </button>
             </div>
           );
         })}
@@ -756,21 +769,24 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
             <p>
               <strong>Confirmed redexes:</strong> {confirmedRedexes.length}
 
-              {currentSelection && (
-                <span> | <strong>Current selection:</strong> {currentSelectionApps.length} redex{currentSelectionApps.length !== 1 ? 'es' : ''} found</span>
-              )}
             </p>
             <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
-              {currentSelection && (
-                <button 
-                  onClick={handleConfirmSelection}
-                  style={{ fontSize: '14px', padding: '6px 12px' }}
-                >
-                  Confirm Selection
-                </button>
-              )}
-              {confirmedRedexes.length > 0 && (
-                <button 
+              <button
+                onClick={handleConfirmSelection}
+                disabled={!currentSelection}
+                style={{ fontSize: '14px', padding: '6px 12px' }}
+              >
+                Confirm Selection
+              </button>
+              <button
+                onClick={handleClearCurrentSelection}
+                disabled={!currentSelection}
+                style={{ fontSize: '14px', padding: '6px 12px' }}
+              >
+                Reset Current Highlight
+              </button>
+              {(confirmedRedexes.length > 0 || currentSelection) && (
+                <button
                   onClick={handleClearAll}
                   style={{ fontSize: '14px', padding: '6px 12px' }}
                 >

@@ -3,10 +3,10 @@ import './styles.css';
 import { NormalOrderLesson } from './NormalOrderLesson';
 import { RedexHighlightLesson } from './RedexHighlightLesson';
 import { AlphaRenameLesson } from './AlphaRenameLesson';
-import { BodyOfAbstractionLesson } from './BodyOfAbstractionLesson';
+import { ApplicationLesson } from './ApplicationLesson';
 import { VariableBindingLesson } from './VariableBindingLesson';
 
-type Lesson = 'menu' | 'normal-order' | 'redex-highlight' | 'alpha-rename' | 'body-of-abstraction' | 'variable-binding';
+type Lesson = 'menu' | 'normal-order' | 'redex-highlight' | 'alpha-rename' | 'application' | 'variable-binding';
 
 const App: React.FC = () => {
   const [currentLesson, setCurrentLesson] = useState<Lesson>('menu');
@@ -23,8 +23,8 @@ const App: React.FC = () => {
     return <AlphaRenameLesson onBack={() => setCurrentLesson('menu')} />;
   }
 
-  if (currentLesson === 'body-of-abstraction') {
-    return <BodyOfAbstractionLesson onBack={() => setCurrentLesson('menu')} />;
+  if (currentLesson === 'application') {
+    return <ApplicationLesson onBack={() => setCurrentLesson('menu')} />;
   }
 
   if (currentLesson === 'variable-binding') {
@@ -51,9 +51,9 @@ const App: React.FC = () => {
           <h2>Alpha Renaming</h2>
           <p>Learn alpha renaming by selecting which variables in a redex should be renamed to avoid variable capture.</p>
         </div>
-        <div className="lesson-card" onClick={() => setCurrentLesson('body-of-abstraction')}>
-          <h2>Bodies of Abstraction</h2>
-          <p>Identify and highlight all bodies of abstraction (the expression after the dot in lambda abstractions) in lambda calculus expressions.</p>
+        <div className="lesson-card" onClick={() => setCurrentLesson('application')}>
+          <h2>Identify Applications</h2>
+          <p>Identify and highlight every application (M applied to N, written M N) in lambda calculus expressions.</p>
         </div>
         <div className="lesson-card" onClick={() => setCurrentLesson('variable-binding')}>
           <h2>Variable Binding</h2>
