@@ -1,5 +1,8 @@
 # lambda-calculus-interactive-lesson
-This project serves as an interactive lesson in lambda calculus
+
+This project serves as an interactive lesson in lambda calculus.
+
+**Deployment:** The app is set up for **Vercel** (frontend) and **Supabase** (backend for auth and progress). See [VERCEL_SUPABASE_SETUP.md](./VERCEL_SUPABASE_SETUP.md) for setup steps. The app runs without Supabase if you don’t set the env vars.
 
 # Getting Started with Create React App
 
