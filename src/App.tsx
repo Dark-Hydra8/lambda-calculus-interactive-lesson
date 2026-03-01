@@ -39,25 +39,25 @@ const App: React.FC = () => {
       </p>
       
       <div className="lesson-menu">
-        <div className="lesson-card" onClick={() => setCurrentLesson('normal-order')}>
-          <h2>Normal Order Reduction</h2>
-          <p>Practice reducing lambda expressions using normal order evaluation. Enter the reduced form of each expression step by step.</p>
+        <div className="lesson-card" onClick={() => setCurrentLesson('application')}>
+          <h2>Identify Applications</h2>
+          <p>Identify and highlight every application (M applied to N, written M N) in lambda calculus expressions.</p>
         </div>
         <div className="lesson-card" onClick={() => setCurrentLesson('redex-highlight')}>
           <h2>Redex Highlighting</h2>
           <p>Identify and highlight all redexes (applications where the left side is a lambda abstraction) in lambda calculus expressions.</p>
         </div>
+        <div className="lesson-card" onClick={() => setCurrentLesson('variable-binding')}>
+          <h2>Variable Binding</h2>
+          <p>For each variable in a lambda expression, identify which lambda abstraction it is bound to (or mark it as a free variable).</p>
+        </div>
         <div className="lesson-card" onClick={() => setCurrentLesson('alpha-rename')}>
           <h2>Alpha Renaming</h2>
           <p>Learn alpha renaming by selecting which variables in a redex should be renamed to avoid variable capture.</p>
         </div>
-        <div className="lesson-card" onClick={() => setCurrentLesson('application')}>
-          <h2>Identify Applications</h2>
-          <p>Identify and highlight every application (M applied to N, written M N) in lambda calculus expressions.</p>
-        </div>
-        <div className="lesson-card" onClick={() => setCurrentLesson('variable-binding')}>
-          <h2>Variable Binding</h2>
-          <p>For each variable in a lambda expression, identify which lambda abstraction it is bound to (or mark it as a free variable).</p>
+        <div className="lesson-card" onClick={() => setCurrentLesson('normal-order')}>
+          <h2>Normal Order Reduction</h2>
+          <p>Practice reducing lambda expressions using normal order evaluation. Enter the reduced form of each expression step by step.</p>
         </div>
       </div>
     </div>
