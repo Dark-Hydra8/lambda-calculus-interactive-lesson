@@ -2,6 +2,8 @@ import React, { useState, useMemo, useRef } from 'react';
 import './styles.css';
 import { LambdaObject, Variable, Application, Lambda } from './lambda_ir';
 import { random_lambda } from './random_lambda';
+import { addSpacesAroundParens } from './displayParens';
+import { getParenPairMap, renderSegmentWithColoredParens, PAREN_COLORS } from './coloredParens';
 
 type Question = {
   question: LambdaObject;
@@ -173,6 +175,13 @@ export const ApplicationLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
     return ranges;
   }, [currentQuestion.question, currentQuestion.questionStr]);
 
+  const { displayStr, originalToDisplay, displayToOriginal } = useMemo(
+    () => addSpacesAroundParens(currentQuestion.questionStr),
+    [currentQuestion.questionStr]
+  );
+
+  const parenPairMap = useMemo(() => getParenPairMap(displayStr), [displayStr]);
+
   const rangeToApplicationRangeMap = useMemo(() => {
     const map = new Map<string, ApplicationRange>();
     for (const ar of applicationRanges) {
@@ -214,8 +223,11 @@ export const ApplicationLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
       startPos = rangeBeforeStart.toString().length;
       endPos = startPos + selectionText.length;
     }
-    const startPosWithoutSpaces = positionWithoutSpaces(textContent, startPos);
-    const endPosWithoutSpaces = positionWithoutSpaces(textContent, endPos);
+    // textContent is displayStr (with extra spaces); map display positions back to original string
+    const startOrig = displayToOriginal[Math.min(startPos, displayToOriginal.length - 1)] ?? 0;
+    const endOrig = displayToOriginal[Math.min(endPos, displayToOriginal.length - 1)] ?? currentQuestion.questionStr.length;
+    const startPosWithoutSpaces = positionWithoutSpaces(currentQuestion.questionStr, startOrig);
+    const endPosWithoutSpaces = positionWithoutSpaces(currentQuestion.questionStr, endOrig);
     if (startPosWithoutSpaces < endPosWithoutSpaces) {
       setCurrentSelection({ start: startPosWithoutSpaces, end: endPosWithoutSpaces });
     }
@@ -314,13 +326,16 @@ export const ApplicationLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
   const handleShowAnswer = () => setShowAnswers(true);
 
   const renderExpressionWithHighlights = () => {
-    const text = currentQuestion.questionStr;
+    const text = displayStr;
+    const origStr = currentQuestion.questionStr;
     const highlights: Array<{ type: 'current'; start: number; end: number }> = [];
     if (currentSelection) {
+      const startWithSpaces = positionWithSpaces(origStr, currentSelection.start);
+      const endWithSpaces = positionWithSpaces(origStr, currentSelection.end);
       highlights.push({
         type: 'current',
-        start: positionWithSpaces(text, currentSelection.start),
-        end: positionWithSpaces(text, currentSelection.end),
+        start: originalToDisplay[startWithSpaces] ?? 0,
+        end: originalToDisplay[endWithSpaces] ?? text.length,
       });
     }
     const charHighlights: Array<Array<{ type: 'current' }>> = [];
@@ -339,8 +354,13 @@ export const ApplicationLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
       } else {
         if (currentGroup) {
           const groupText = text.substring(currentGroup.start, currentGroup.end);
+          const coloredContent = renderSegmentWithColoredParens(groupText, currentGroup.start, {
+            pairMap: parenPairMap,
+            colors: PAREN_COLORS,
+            keyPrefix: `main-${currentGroup.start}`,
+          });
           if (currentGroup.highlights.length === 0) {
-            elements.push(<span key={`text-${currentGroup.start}`}>{groupText}</span>);
+            elements.push(<span key={`text-${currentGroup.start}`}>{coloredContent}</span>);
           } else {
             const hasCurrent = currentGroup.highlights.some(h => h.type === 'current');
             elements.push(
@@ -359,7 +379,7 @@ export const ApplicationLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
                     : undefined
                 }
               >
-                {groupText}
+                {coloredContent}
               </span>
             );
           }
@@ -376,7 +396,8 @@ export const ApplicationLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
 
   const renderConfirmedSelections = () => {
     if (confirmedSelections.length === 0) return null;
-    const text = currentQuestion.questionStr;
+    const text = displayStr;
+    const origStr = currentQuestion.questionStr;
     return (
       <div>
         {confirmedSelections.map((confirmed, index) => {
@@ -387,19 +408,36 @@ export const ApplicationLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
           if (showAnswers) {
             className += appRange !== undefined ? ' correct-redex' : ' incorrect-selection';
           }
-          const startWithSpaces = positionWithSpaces(text, range.start);
-          const endWithSpaces = positionWithSpaces(text, range.end);
-          const beforeText = text.substring(0, startWithSpaces);
-          const highlightedText = text.substring(startWithSpaces, endWithSpaces);
-          const afterText = text.substring(endWithSpaces);
+          const startWithSpaces = positionWithSpaces(origStr, range.start);
+          const endWithSpaces = positionWithSpaces(origStr, range.end);
+          const startDisp = originalToDisplay[startWithSpaces] ?? 0;
+          const endDisp = originalToDisplay[endWithSpaces] ?? text.length;
+          const beforeText = text.substring(0, startDisp);
+          const highlightedText = text.substring(startDisp, endDisp);
+          const afterText = text.substring(endDisp);
+          const beforeNodes = renderSegmentWithColoredParens(beforeText, 0, {
+            pairMap: parenPairMap,
+            colors: PAREN_COLORS,
+            keyPrefix: `conf-${index}-b`,
+          });
+          const highlightNodes = renderSegmentWithColoredParens(highlightedText, startDisp, {
+            pairMap: parenPairMap,
+            colors: PAREN_COLORS,
+            keyPrefix: `conf-${index}-h`,
+          });
+          const afterNodes = renderSegmentWithColoredParens(afterText, endDisp, {
+            pairMap: parenPairMap,
+            colors: PAREN_COLORS,
+            keyPrefix: `conf-${index}-a`,
+          });
           return (
             <div key={`confirmed-${index}`} style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <span style={{ flex: '1 1 auto', minWidth: 0 }}>
-                <span>{beforeText}</span>
+                <span>{beforeNodes}</span>
                 <span className={className} style={{ cursor: 'default', display: 'inline' }}>
-                  {highlightedText}
+                  {highlightNodes}
                 </span>
-                <span>{afterText}</span>
+                <span>{afterNodes}</span>
               </span>
               <button
                 type="button"
@@ -417,21 +455,39 @@ export const ApplicationLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
 
   const renderCorrectAnswers = () => {
     if (!showAnswers) return null;
-    const text = currentQuestion.questionStr;
+    const text = displayStr;
+    const origStr = currentQuestion.questionStr;
     const colors = ['#28a745', '#007bff', '#ffc107', '#dc3545', '#6f42c1', '#20c997', '#fd7e14', '#e83e8c'];
     if (applicationRanges.length === 0) return null;
     return (
       <div>
         {applicationRanges.map((ar, index) => {
-          const startWithSpaces = positionWithSpaces(text, ar.start);
-          const endWithSpaces = positionWithSpaces(text, ar.end);
+          const startWithSpaces = positionWithSpaces(origStr, ar.start);
+          const endWithSpaces = positionWithSpaces(origStr, ar.end);
+          const startDisp = originalToDisplay[startWithSpaces] ?? 0;
+          const endDisp = originalToDisplay[endWithSpaces] ?? text.length;
           const color = colors[index % colors.length];
-          const beforeText = text.substring(0, startWithSpaces);
-          const highlightedText = text.substring(startWithSpaces, endWithSpaces);
-          const afterText = text.substring(endWithSpaces);
+          const beforeText = text.substring(0, startDisp);
+          const highlightedText = text.substring(startDisp, endDisp);
+          const afterText = text.substring(endDisp);
+          const beforeNodes = renderSegmentWithColoredParens(beforeText, 0, {
+            pairMap: parenPairMap,
+            colors: PAREN_COLORS,
+            keyPrefix: `correct-${index}-b`,
+          });
+          const highlightNodes = renderSegmentWithColoredParens(highlightedText, startDisp, {
+            pairMap: parenPairMap,
+            colors: PAREN_COLORS,
+            keyPrefix: `correct-${index}-h`,
+          });
+          const afterNodes = renderSegmentWithColoredParens(afterText, endDisp, {
+            pairMap: parenPairMap,
+            colors: PAREN_COLORS,
+            keyPrefix: `correct-${index}-a`,
+          });
           return (
             <div key={`correct-${index}`} style={{ marginBottom: '8px' }}>
-              <span>{beforeText}</span>
+              <span>{beforeNodes}</span>
               <span
                 className="text-selection confirmed-redex correct-redex"
                 style={{
@@ -441,9 +497,9 @@ export const ApplicationLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
                   border: `2px solid ${color}`,
                 }}
               >
-                {highlightedText}
+                {highlightNodes}
               </span>
-              <span>{afterText}</span>
+              <span>{afterNodes}</span>
             </div>
           );
         })}
@@ -467,7 +523,9 @@ export const ApplicationLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
     index: number,
     showBrackets: boolean
   ) => {
-    const text = response.questionStr;
+    const origStr = response.questionStr;
+    const { displayStr: text, originalToDisplay: respO2D } = addSpacesAroundParens(origStr);
+    const respParenMap = getParenPairMap(text);
     const colors = ['#28a745', '#007bff', '#ffc107', '#dc3545', '#6f42c1', '#20c997', '#fd7e14', '#e83e8c'];
     let renderedChars: React.ReactNode[] = [];
     if (showBrackets) {
@@ -480,13 +538,15 @@ export const ApplicationLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
         Array<{ color: string; type: 'start' | 'end'; bodyIndex: number }>
       >();
       sortedApps.forEach((ar, bodyIndex) => {
-        const startWithSpaces = positionWithSpaces(text, ar.start);
-        const endWithSpaces = positionWithSpaces(text, ar.end - 1);
+        const startWithSpaces = positionWithSpaces(origStr, ar.start);
+        const endWithSpaces = positionWithSpaces(origStr, ar.end - 1);
+        const startDisp = respO2D[startWithSpaces] ?? 0;
+        const endDisp = respO2D[endWithSpaces] ?? text.length - 1;
         const color = colors[bodyIndex % colors.length];
-        if (!bracketMap.has(startWithSpaces)) bracketMap.set(startWithSpaces, []);
-        bracketMap.get(startWithSpaces)!.push({ color, type: 'start', bodyIndex });
-        if (!bracketMap.has(endWithSpaces)) bracketMap.set(endWithSpaces, []);
-        bracketMap.get(endWithSpaces)!.push({ color, type: 'end', bodyIndex });
+        if (!bracketMap.has(startDisp)) bracketMap.set(startDisp, []);
+        bracketMap.get(startDisp)!.push({ color, type: 'start', bodyIndex });
+        if (!bracketMap.has(endDisp)) bracketMap.set(endDisp, []);
+        bracketMap.get(endDisp)!.push({ color, type: 'end', bodyIndex });
       });
       const bracketStack: Array<{ color: string }> = [];
       for (let i = 0; i < text.length; i++) {
@@ -504,7 +564,14 @@ export const ApplicationLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
               </span>
             );
           }
-          renderedChars.push(char);
+          const parenColor = (respParenMap.get(i) ?? -1) >= 0 ? PAREN_COLORS[respParenMap.get(i)! % PAREN_COLORS.length] : undefined;
+          renderedChars.push(
+            parenColor ? (
+              <span key={`char-${i}`} style={{ color: parenColor, fontWeight: 'bold' }}>{char}</span>
+            ) : (
+              char
+            )
+          );
           const closingBracketsSorted = [...closingBrackets].sort((a, b) => b.bodyIndex - a.bodyIndex);
           for (let idx = 0; idx < closingBracketsSorted.length; idx++) {
             const info = closingBracketsSorted[idx];
@@ -517,11 +584,22 @@ export const ApplicationLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
             );
           }
         } else {
-          renderedChars.push(char);
+          const parenColor = (respParenMap.get(i) ?? -1) >= 0 ? PAREN_COLORS[respParenMap.get(i)! % PAREN_COLORS.length] : undefined;
+          renderedChars.push(
+            parenColor ? (
+              <span key={`char-${i}`} style={{ color: parenColor, fontWeight: 'bold' }}>{char}</span>
+            ) : (
+              char
+            )
+          );
         }
       }
     } else {
-      renderedChars = text.split('').map(char => char);
+      renderedChars = renderSegmentWithColoredParens(text, 0, {
+        pairMap: respParenMap,
+        colors: PAREN_COLORS,
+        keyPrefix: `prev-${index}`,
+      });
     }
     const appCount = response.correctApplications.length;
     return (

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import './styles.css';
 import { LambdaObject, Variable, Application, Lambda } from './lambda_ir';
 import { random_lambda } from './random_lambda';
+import { getParenPairMap, PAREN_COLORS } from './coloredParens';
 
 type VariableOccurrence = {
   id: string;
@@ -313,19 +314,20 @@ export const VariableBindingLesson: React.FC<{ onBack: () => void }> = ({ onBack
     setShowAnswer(false);
   };
 
+  const questionStr = question.toString();
+  const parenPairMap = useMemo(() => getParenPairMap(questionStr), [questionStr]);
+
   const renderExpression = () => {
     const elements: React.ReactNode[] = [];
     let occurrenceIndex = 0;
+    const idx = { current: 0 };
 
     const renderRecursive = (obj: LambdaObject, path: string): void => {
       if (obj instanceof Variable) {
         const occurrence = variableOccurrences.find(occ => occ.path === path || occ.id === path);
         if (occurrence) {
-          // Skip dropdown for lambda parameters (arguments of lambda abstractions)
           const isParameter = path.includes('.param') || path.startsWith('param-');
-          
           if (isParameter) {
-            // Just render the variable without dropdown
             elements.push(
               <span key={`var-${occurrence.id}`} style={{ verticalAlign: 'baseline' }}>
                 {occurrence.symbol}
@@ -386,6 +388,7 @@ export const VariableBindingLesson: React.FC<{ onBack: () => void }> = ({ onBack
         } else {
           elements.push(<span key={`var-fb-${occurrenceIndex++}`}>{obj.get_symbol()}</span>);
         }
+        idx.current += obj.get_symbol().length;
         return;
       }
 
@@ -394,8 +397,9 @@ export const VariableBindingLesson: React.FC<{ onBack: () => void }> = ({ onBack
         const bodyPath = path ? `${path}.body` : `body-${occurrenceIndex++}`;
         const num = lambdaToNumber.get(obj);
 
+        idx.current += 1; // λ
         elements.push(
-          <span 
+          <span
             key={`lam-${path}`} 
             style={{ 
               position: 'relative',
@@ -420,6 +424,7 @@ export const VariableBindingLesson: React.FC<{ onBack: () => void }> = ({ onBack
           </span>
         );
         renderRecursive(obj.get_parameter(), paramPath);
+        idx.current += 1; // .
         elements.push(<span key={`dot-${path}`}>.</span>);
         renderRecursive(obj.get_body(), bodyPath);
         return;
@@ -434,14 +439,42 @@ export const VariableBindingLesson: React.FC<{ onBack: () => void }> = ({ onBack
           (obj.get_right() instanceof Lambda &&
             obj.get_parent() instanceof Application &&
             (obj.get_parent() as Application).get_left() === obj);
-
-        if (leftNeedsParens) elements.push(<span key={`lp-${path}`}>(</span>);
+        if (leftNeedsParens) {
+          const pos = idx.current++;
+          const pairId = parenPairMap.get(pos);
+          const color = pairId !== undefined ? PAREN_COLORS[pairId % PAREN_COLORS.length] : undefined;
+          elements.push(
+            <span key={`lp-${path}`} style={color ? { color, fontWeight: 'bold' } : undefined}>(</span>
+          );
+        }
         renderRecursive(obj.get_left(), leftPath);
-        if (leftNeedsParens) elements.push(<span key={`rp-${path}`}>)</span>);
+        if (leftNeedsParens) {
+          const pos = idx.current++;
+          const pairId = parenPairMap.get(pos);
+          const color = pairId !== undefined ? PAREN_COLORS[pairId % PAREN_COLORS.length] : undefined;
+          elements.push(
+            <span key={`rp-${path}`} style={color ? { color, fontWeight: 'bold' } : undefined}>)</span>
+          );
+        }
+        idx.current += 1; // space
         elements.push(<span key={`sp-${path}`}> </span>);
-        if (rightNeedsParens) elements.push(<span key={`lp2-${path}`}>(</span>);
+        if (rightNeedsParens) {
+          const pos = idx.current++;
+          const pairId = parenPairMap.get(pos);
+          const color = pairId !== undefined ? PAREN_COLORS[pairId % PAREN_COLORS.length] : undefined;
+          elements.push(
+            <span key={`lp2-${path}`} style={color ? { color, fontWeight: 'bold' } : undefined}>(</span>
+          );
+        }
         renderRecursive(obj.get_right(), rightPath);
-        if (rightNeedsParens) elements.push(<span key={`rp2-${path}`}>)</span>);
+        if (rightNeedsParens) {
+          const pos = idx.current++;
+          const pairId = parenPairMap.get(pos);
+          const color = pairId !== undefined ? PAREN_COLORS[pairId % PAREN_COLORS.length] : undefined;
+          elements.push(
+            <span key={`rp2-${path}`} style={color ? { color, fontWeight: 'bold' } : undefined}>)</span>
+          );
+        }
       }
     };
 

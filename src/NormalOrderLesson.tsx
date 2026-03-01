@@ -4,6 +4,7 @@ import { LambdaObject, Variable, Application, Lambda } from './lambda_ir';
 import { Parser } from './parser';
 import { random_lambda } from './random_lambda';
 import { LambdaLexerError, LambdaSyntaxError } from './lexer';
+import { renderStringWithColoredParens } from './coloredParens';
 
 type Question = {
   question: LambdaObject;
@@ -194,7 +195,7 @@ export const NormalOrderLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
 
       {!showResult ? (
         <div>
-          <p><strong>Reduce:</strong> {questions[currentIndex].questionStr}</p>
+          <p><strong>Reduce:</strong> {renderStringWithColoredParens(questions[currentIndex].questionStr, { keyPrefix: 'norm' })}</p>
           <input
             type="text"
             value={userAnswer}
@@ -207,7 +208,7 @@ export const NormalOrderLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
       ) : <>
             <strong>Finished Resolving</strong>
 	    <br></br>
-	    {questions[currentIndex-1].answerStr}
+	    {renderStringWithColoredParens(questions[currentIndex - 1].answerStr, { keyPrefix: 'norm-ans' })}
 	  </>
       }
     </div>

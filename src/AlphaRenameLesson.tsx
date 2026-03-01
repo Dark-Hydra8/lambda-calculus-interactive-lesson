@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import './styles.css';
 import { LambdaObject, Variable, Application, Lambda, norm_ord_reduce, all_variables, max_redex_height } from './lambda_ir';
+import { getParenPairMap, PAREN_COLORS } from './coloredParens';
 import { random_lambda } from './random_lambda';
 import { sets_eq, difference } from './SetOperations';
 
@@ -307,15 +308,19 @@ export const AlphaRenameLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
     setIsCorrect(null);
   };
 
+  const questionStr = currentQuestion.questionStr;
+  const parenPairMap = useMemo(() => getParenPairMap(questionStr), [questionStr]);
+
   // Render the expression with checkboxes below variables
   const renderExpression = () => {
     const elements: React.ReactNode[] = [];
     let occurrenceIndex = 0;
-    
+    const idx = { current: 0 };
+
     // Recursive function to render the expression
     const renderRecursive = (obj: LambdaObject, path: string = '', isInRedexContext: boolean = false): void => {
       const isInRedex = obj === redex || isInRedexContext || isInRedexSubtree(obj, redex);
-      
+
       if (obj instanceof Variable) {
         // Find the occurrence for this variable at this path
         const occurrence = variableOccurrences.find(occ => occ.id === path);
@@ -382,7 +387,7 @@ export const AlphaRenameLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
         } else {
           // Fallback if occurrence not found
           elements.push(
-            <span 
+            <span
               key={`fallback-${occurrenceIndex++}`}
               style={{
                 verticalAlign: 'baseline',
@@ -397,15 +402,17 @@ export const AlphaRenameLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
             </span>
           );
         }
+        idx.current += obj.get_symbol().length;
       } else if (obj instanceof Lambda) {
         const parameter = obj.get_parameter();
         const paramPath = path ? `${path}.param` : `param-${occurrenceIndex++}`;
         const bodyPath = path ? `${path}.body` : `body-${occurrenceIndex++}`;
         
         const lambdaInRedex = isInRedex || obj === redex.get_left();
-        
+
+        idx.current += 1; // λ
         elements.push(
-          <span 
+          <span
             key={`lambda-${path}`}
             style={{
               verticalAlign: 'baseline',
@@ -420,8 +427,9 @@ export const AlphaRenameLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
           </span>
         );
         renderRecursive(parameter, paramPath, lambdaInRedex);
+        idx.current += 1; // .
         elements.push(
-          <span 
+          <span
             key={`dot-${path}`}
             style={{
               verticalAlign: 'baseline',
@@ -449,11 +457,15 @@ export const AlphaRenameLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
         const appInRedex = obj === redex || isInRedex;
         
         if (leftNeedsParens) {
+          const pos = idx.current++;
+          const pairId = parenPairMap.get(pos);
+          const parenColor = pairId !== undefined ? PAREN_COLORS[pairId % PAREN_COLORS.length] : undefined;
           elements.push(
-            <span 
+            <span
               key={`lparen-left-${path}`}
               style={{
                 verticalAlign: 'baseline',
+                ...(parenColor ? { color: parenColor, fontWeight: 'bold' as const } : {}),
                 ...(appInRedex ? {
                   backgroundColor: 'rgba(40, 167, 69, 0.1)',
                   padding: '2px',
@@ -467,11 +479,15 @@ export const AlphaRenameLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
         }
         renderRecursive(obj.get_left(), leftPath, appInRedex);
         if (leftNeedsParens) {
+          const pos = idx.current++;
+          const pairId = parenPairMap.get(pos);
+          const parenColor = pairId !== undefined ? PAREN_COLORS[pairId % PAREN_COLORS.length] : undefined;
           elements.push(
-            <span 
+            <span
               key={`rparen-left-${path}`}
               style={{
                 verticalAlign: 'baseline',
+                ...(parenColor ? { color: parenColor, fontWeight: 'bold' as const } : {}),
                 ...(appInRedex ? {
                   backgroundColor: 'rgba(40, 167, 69, 0.1)',
                   padding: '2px',
@@ -483,8 +499,9 @@ export const AlphaRenameLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
             </span>
           );
         }
+        idx.current += 1; // space
         elements.push(
-          <span 
+          <span
             key={`space-${path}`}
             style={{
               verticalAlign: 'baseline',
@@ -499,11 +516,15 @@ export const AlphaRenameLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
           </span>
         );
         if (rightNeedsParens) {
+          const pos = idx.current++;
+          const pairId = parenPairMap.get(pos);
+          const parenColor = pairId !== undefined ? PAREN_COLORS[pairId % PAREN_COLORS.length] : undefined;
           elements.push(
-            <span 
+            <span
               key={`lparen-right-${path}`}
               style={{
                 verticalAlign: 'baseline',
+                ...(parenColor ? { color: parenColor, fontWeight: 'bold' as const } : {}),
                 ...(appInRedex ? {
                   backgroundColor: 'rgba(40, 167, 69, 0.1)',
                   padding: '2px',
@@ -517,11 +538,15 @@ export const AlphaRenameLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
         }
         renderRecursive(obj.get_right(), rightPath, appInRedex);
         if (rightNeedsParens) {
+          const pos = idx.current++;
+          const pairId = parenPairMap.get(pos);
+          const parenColor = pairId !== undefined ? PAREN_COLORS[pairId % PAREN_COLORS.length] : undefined;
           elements.push(
-            <span 
+            <span
               key={`rparen-right-${path}`}
               style={{
                 verticalAlign: 'baseline',
+                ...(parenColor ? { color: parenColor, fontWeight: 'bold' as const } : {}),
                 ...(appInRedex ? {
                   backgroundColor: 'rgba(40, 167, 69, 0.1)',
                   padding: '2px',

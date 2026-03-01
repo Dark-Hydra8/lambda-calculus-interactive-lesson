@@ -3,6 +3,8 @@ import './styles.css';
 import { LambdaObject, Variable, Application, Lambda } from './lambda_ir';
 import { random_lambda } from './random_lambda';
 import { Parser } from './parser';
+import { addSpacesAroundParens } from './displayParens';
+import { getParenPairMap, renderSegmentWithColoredParens, renderStringWithColoredParens, PAREN_COLORS } from './coloredParens';
 
 type Question = {
   question: LambdaObject;
@@ -208,6 +210,13 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
     return new Set(currentQuestion.correctRedexes);
   }, [currentIndex]);
 
+  const { displayStr, originalToDisplay, displayToOriginal } = useMemo(
+    () => addSpacesAroundParens(currentQuestion.questionStr),
+    [currentQuestion.questionStr]
+  );
+
+  const parenPairMap = useMemo(() => getParenPairMap(displayStr), [displayStr]);
+
   const handleTextSelection = () => {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
@@ -262,16 +271,16 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
       endPos = startPos + selectionText.length;
     }
 
-    // Convert positions to exclude spaces
-    const startPosWithoutSpaces = positionWithoutSpaces(textContent, startPos);
-    const endPosWithoutSpaces = positionWithoutSpaces(textContent, endPos);
-    
-    // Set the current selection if it's valid (using positions without spaces)
+    // textContent is displayStr; map display positions back to original string
+    const startOrig = displayToOriginal[Math.min(startPos, displayToOriginal.length - 1)] ?? 0;
+    const endOrig = displayToOriginal[Math.min(endPos, displayToOriginal.length - 1)] ?? currentQuestion.questionStr.length;
+    const startPosWithoutSpaces = positionWithoutSpaces(currentQuestion.questionStr, startOrig);
+    const endPosWithoutSpaces = positionWithoutSpaces(currentQuestion.questionStr, endOrig);
+
     if (startPosWithoutSpaces < endPosWithoutSpaces) {
       setCurrentSelection({ start: startPosWithoutSpaces, end: endPosWithoutSpaces });
     }
 
-    // Clear the browser selection
     selection.removeAllRanges();
   };
 
@@ -418,48 +427,37 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
 
   // Render the expression with highlights (excluding confirmed redexes, handles overlaps)
   const renderExpressionWithHighlights = () => {
-    const text = currentQuestion.questionStr;
-    
-    // Build arrays of highlight ranges
-    const highlights: Array<{ type: 'current' | 'missed', start: number, end: number, redex?: Application }> = [];
-    
-    // Add current selection (if any) - convert positions to include spaces
+    const text = displayStr;
+    const origStr = currentQuestion.questionStr;
+
+    const highlights: Array<{ type: 'current' | 'missed'; start: number; end: number; redex?: Application }> = [];
+
     if (currentSelection) {
-      const startWithSpaces = positionWithSpaces(text, currentSelection.start);
-      const endWithSpaces = positionWithSpaces(text, currentSelection.end);
+      const startWithSpaces = positionWithSpaces(origStr, currentSelection.start);
+      const endWithSpaces = positionWithSpaces(origStr, currentSelection.end);
       highlights.push({
         type: 'current',
-        start: startWithSpaces,
-        end: endWithSpaces
+        start: originalToDisplay[startWithSpaces] ?? 0,
+        end: originalToDisplay[endWithSpaces] ?? text.length,
       });
     }
-    
-    // Create bracket color map for showing correct redexes with colored brackets
-    // Maps position to array of { color, type: 'start' | 'end' } to handle multiple brackets at same position
-    const bracketMap = new Map<number, Array<{ color: string, type: 'start' | 'end' }>>();
+
+    const bracketMap = new Map<number, Array<{ color: string; type: 'start' | 'end' }>>();
     const redexColors = ['#28a745', '#007bff', '#ffc107', '#dc3545', '#6f42c1', '#20c997', '#fd7e14', '#e83e8c'];
-    
+
     if (showAnswers) {
-      // Assign a unique color to each redex and mark its start and end positions with brackets
       currentQuestion.correctRedexes.forEach((redex, index) => {
         const range = redexToRangeMap.get(redex);
         if (range) {
-          const startWithSpaces = positionWithSpaces(text, range.start);
-          // range.end is exclusive, so the last character is at range.end - 1
-          const endWithSpaces = positionWithSpaces(text, range.end - 1);
+          const startWithSpaces = positionWithSpaces(origStr, range.start);
+          const endWithSpaces = positionWithSpaces(origStr, range.end - 1);
+          const startDisp = originalToDisplay[startWithSpaces] ?? 0;
+          const endDisp = originalToDisplay[endWithSpaces] ?? text.length - 1;
           const color = redexColors[index % redexColors.length];
-          
-          // Mark start position with opening bracket
-          if (!bracketMap.has(startWithSpaces)) {
-            bracketMap.set(startWithSpaces, []);
-          }
-          bracketMap.get(startWithSpaces)!.push({ color, type: 'start' });
-          
-          // Mark end position (last character of redex) with closing bracket
-          if (!bracketMap.has(endWithSpaces)) {
-            bracketMap.set(endWithSpaces, []);
-          }
-          bracketMap.get(endWithSpaces)!.push({ color, type: 'end' });
+          if (!bracketMap.has(startDisp)) bracketMap.set(startDisp, []);
+          bracketMap.get(startDisp)!.push({ color, type: 'start' });
+          if (!bracketMap.has(endDisp)) bracketMap.set(endDisp, []);
+          bracketMap.get(endDisp)!.push({ color, type: 'end' });
         }
       });
     }
@@ -540,12 +538,19 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
                   }
                 });
               } else {
-                renderedChars.push(char);
+                const parenColor = (parenPairMap.get(j) ?? -1) >= 0 ? PAREN_COLORS[parenPairMap.get(j)! % PAREN_COLORS.length] : undefined;
+                renderedChars.push(
+                  parenColor ? (
+                    <span key={`paren-${j}`} style={{ color: parenColor, fontWeight: 'bold' }}>{char}</span>
+                  ) : (
+                    char
+                  )
+                );
               }
             }
             return renderedChars;
           };
-          
+
           if (currentGroup.highlights.length === 0) {
             // No highlights - render with colored brackets if needed
             const renderedChars = renderTextWithBrackets(currentGroup.start, currentGroup.end);
@@ -577,9 +582,14 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
             }
             
             // Render text with brackets if showing answers
-            const renderedText = showAnswers 
+            const coloredGroupText = renderSegmentWithColoredParens(groupText, currentGroup.start, {
+              pairMap: parenPairMap,
+              colors: PAREN_COLORS,
+              keyPrefix: `rg-${currentGroup.start}`,
+            });
+            const renderedText = showAnswers
               ? renderTextWithBrackets(currentGroup.start, currentGroup.end)
-              : groupText;
+              : coloredGroupText;
             
             elements.push(
               <span
@@ -618,8 +628,9 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
   // Render confirmed redexes - each on a separate line showing the full string with highlighted portion
   const renderConfirmedRedexes = () => {
     if (confirmedRedexes.length === 0) return null;
-    
-    const text = currentQuestion.questionStr;
+
+    const text = displayStr;
+    const origStr = currentQuestion.questionStr;
     
     // Remove duplicates - each range should only appear once
     const rangeMap = new Map<string, ConfirmedRedex>();
@@ -656,29 +667,42 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
             }
           }
           
-          // Convert positions from "without spaces" to "with spaces" for rendering
-          const startWithSpaces = positionWithSpaces(text, range.start);
-          const endWithSpaces = positionWithSpaces(text, range.end);
-          
-          // Build the full string with the highlighted portion
-          const beforeText = text.substring(0, startWithSpaces);
-          const highlightedText = text.substring(startWithSpaces, endWithSpaces);
-          const afterText = text.substring(endWithSpaces);
-          
+          const startWithSpaces = positionWithSpaces(origStr, range.start);
+          const endWithSpaces = positionWithSpaces(origStr, range.end);
+          const startDisp = originalToDisplay[startWithSpaces] ?? 0;
+          const endDisp = originalToDisplay[endWithSpaces] ?? text.length;
+          const beforeText = text.substring(0, startDisp);
+          const highlightedText = text.substring(startDisp, endDisp);
+          const afterText = text.substring(endDisp);
+          const beforeNodes = renderSegmentWithColoredParens(beforeText, 0, {
+            pairMap: parenPairMap,
+            colors: PAREN_COLORS,
+            keyPrefix: `redex-conf-${index}-b`,
+          });
+          const highlightNodes = renderSegmentWithColoredParens(highlightedText, startDisp, {
+            pairMap: parenPairMap,
+            colors: PAREN_COLORS,
+            keyPrefix: `redex-conf-${index}-h`,
+          });
+          const afterNodes = renderSegmentWithColoredParens(afterText, endDisp, {
+            pairMap: parenPairMap,
+            colors: PAREN_COLORS,
+            keyPrefix: `redex-conf-${index}-a`,
+          });
           return (
             <div
               key={`confirmed-redex-${index}`}
               style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}
             >
               <span style={{ flex: '1 1 auto', minWidth: 0 }}>
-                <span>{beforeText}</span>
+                <span>{beforeNodes}</span>
                 <span
                   className={className}
                   style={{ cursor: 'default', display: 'inline' }}
                 >
-                  {highlightedText}
+                  {highlightNodes}
                 </span>
-                <span>{afterText}</span>
+                <span>{afterNodes}</span>
               </span>
               <button
                 type="button"
@@ -707,7 +731,7 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
 
       {responses.map((res, idx) => (
         <div key={idx} className="response">
-          <p><strong>Expression:</strong> {res.questionStr}</p>
+          <p><strong>Expression:</strong> {renderStringWithColoredParens(addSpacesAroundParens(res.questionStr).displayStr, { keyPrefix: `res-${idx}` })}</p>
           <p>
             {res.isCorrect ? (
               <span className="correct">
