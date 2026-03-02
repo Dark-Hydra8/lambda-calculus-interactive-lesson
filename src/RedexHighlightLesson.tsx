@@ -829,7 +829,7 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
               >
                 Reset Current Highlight
               </button>
-              {(confirmedRedexes.length > 0 || currentSelection) && (
+              {(confirmedRedexes.length > 0 || currentSelection) && !isSubmitted && (
                 <button
                   onClick={handleClearAll}
                   style={{ fontSize: '14px', padding: '6px 12px' }}
@@ -847,12 +847,14 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
             </button>
             {isSubmitted && (
               <>
-                {!showAnswers && (
+                {!isCorrect && !showAnswers && (
                   <button onClick={handleShowAnswer}>
                     Show Correct Answer
                   </button>
                 )}
-                <button onClick={handleReset}>Try Again</button>
+                {!isCorrect && (
+                  <button onClick={handleReset}>Try Again</button>
+                )}
                 <button onClick={handleNext}>Next Question</button>
               </>
             )}

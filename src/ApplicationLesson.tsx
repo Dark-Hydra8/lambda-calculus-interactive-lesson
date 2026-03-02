@@ -751,10 +751,12 @@ export const ApplicationLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
           </button>
           {isSubmitted && (
             <>
-              {!showAnswers && (
+              {!isCorrect && !showAnswers && (
                 <button onClick={handleShowAnswer}>Show Correct Answer</button>
               )}
-              <button onClick={handleReset}>Try Again</button>
+              {!isCorrect && (
+                <button onClick={handleReset}>Try Again</button>
+              )}
               <button onClick={handleNext}>Next Question</button>
             </>
           )}

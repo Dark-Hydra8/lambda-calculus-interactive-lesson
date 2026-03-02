@@ -535,8 +535,12 @@ export const VariableBindingLesson: React.FC<{ onBack: () => void }> = ({ onBack
           </button>
           {isSubmitted && (
             <>
-              <button onClick={() => setShowAnswer(true)}>Show Answer</button>
-              <button onClick={handleReset}>Try Again</button>
+              {!isCorrect && (
+                <button onClick={() => setShowAnswer(true)}>Show Answer</button>
+              )}
+              {!isCorrect && (
+                <button onClick={handleReset}>Try Again</button>
+              )}
               <button onClick={handleNext}>Next Question</button>
             </>
           )}
