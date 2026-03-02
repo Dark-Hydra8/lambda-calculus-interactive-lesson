@@ -210,6 +210,17 @@ export class LambdaSyntaxError extends GenericSyntaxError<TokenType> {
 	}
 }
 
+function isGenericSyntaxErrorOfTokenType(error: unknown): error is GenericSyntaxError<TokenType> {
+	if (!(error instanceof GenericSyntaxError)) return false;
+	const g = error as GenericSyntaxError<unknown>;
+	const found = g.get_found();
+	if (found !== null && !Object.values(TokenType).includes(found as TokenType)) return false;
+	for (const exp of g.get_expected()) {
+		if (exp !== null && !Object.values(TokenType).includes(exp as TokenType)) return false;
+	}
+	return true;
+}
+
 export class LambdaLexerError extends GenericLexerError {
 	public constructor(malformed_str: string, index: number, message: string | null = null) {
 		if (message === null) {
@@ -318,7 +329,7 @@ export class LambdaLexer extends GenericLexer<TokenType> {
 		try {
 			token = super.expect(token_type);
 		} catch (error) {
-			if (error instanceof GenericSyntaxError<TokenType>) {
+			if (isGenericSyntaxErrorOfTokenType(error)) {
 				throw LambdaSyntaxError.from_generic_syntax_error(error, this.current_line_number);
 			} else {
 				throw error;
