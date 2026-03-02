@@ -82,7 +82,7 @@ function newQuestion(): LambdaObject {
     variables = variables.filter((v) => v.get_bound_lambda() !== null);
     bound_variables = variables.length;
   } while (bound_variables < 3 || String(lambda).length > 50 || total_variables > 7 || bound_variables / total_variables < 0.25 || bound_variables / total_variables > 0.95);
-  console.log(bound_variables, total_variables, bound_variables / total_variables);
+  // console.log(bound_variables, total_variables, bound_variables / total_variables);
   return lambda;
 }
 

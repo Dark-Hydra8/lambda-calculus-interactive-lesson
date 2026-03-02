@@ -266,8 +266,6 @@ export const ApplicationLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
   };
 
   const handleReset = () => {
-    setConfirmedSelections([]);
-    setCurrentSelection(null);
     setShowAnswers(false);
     setIsSubmitted(false);
   };
@@ -282,30 +280,22 @@ export const ApplicationLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
     const isCorrect =
       allCorrectSelected && noIncorrectSelected && selectedRanges.length === correctRanges.length;
 
-    setResponses([
-      ...responses,
-      {
-        question: currentQuestion.question,
-        questionStr: currentQuestion.questionStr,
-        selectedRanges,
-        correctApplications: applicationRanges,
-        isCorrect,
-      },
-    ]);
     setIsSubmitted(true);
-
-    if (isCorrect) {
-      const newQuestion = new_question();
-      questions.push({ question: newQuestion, questionStr: String(newQuestion) });
-      setCurrentIndex(currentIndex + 1);
-      setConfirmedSelections([]);
-      setCurrentSelection(null);
-      setShowAnswers(false);
-      setIsSubmitted(false);
-    }
   };
 
   const handleNext = () => {
+    if (isSubmitted && isCorrect !== null) {
+      setResponses(prev => [
+        ...prev,
+        {
+          question: currentQuestion.question,
+          questionStr: currentQuestion.questionStr,
+          selectedRanges: confirmedSelections.map(c => c.range),
+          correctApplications: applicationRanges,
+          isCorrect,
+        },
+      ]);
+    }
     if (currentIndex + 1 < questions.length) {
       setCurrentIndex(currentIndex + 1);
       setConfirmedSelections([]);
@@ -439,13 +429,15 @@ export const ApplicationLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
                 </span>
                 <span>{afterNodes}</span>
               </span>
-              <button
-                type="button"
-                onClick={() => handleRemoveConfirmed(index)}
-                style={{ fontSize: '12px', padding: '4px 8px', flexShrink: 0 }}
-              >
-                Remove
-              </button>
+              {!isSubmitted && (
+                <button
+                  type="button"
+                  onClick={() => handleRemoveConfirmed(index)}
+                  style={{ fontSize: '12px', padding: '4px 8px', flexShrink: 0 }}
+                >
+                  Remove
+                </button>
+              )}
             </div>
           );
         })}
@@ -457,7 +449,6 @@ export const ApplicationLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
     if (!showAnswers) return null;
     const text = displayStr;
     const origStr = currentQuestion.questionStr;
-    const colors = ['#28a745', '#007bff', '#ffc107', '#dc3545', '#6f42c1', '#20c997', '#fd7e14', '#e83e8c'];
     if (applicationRanges.length === 0) return null;
     return (
       <div>
@@ -466,7 +457,6 @@ export const ApplicationLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
           const endWithSpaces = positionWithSpaces(origStr, ar.end);
           const startDisp = originalToDisplay[startWithSpaces] ?? 0;
           const endDisp = originalToDisplay[endWithSpaces] ?? text.length;
-          const color = colors[index % colors.length];
           const beforeText = text.substring(0, startDisp);
           const highlightedText = text.substring(startDisp, endDisp);
           const afterText = text.substring(endDisp);
@@ -489,12 +479,13 @@ export const ApplicationLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
             <div key={`correct-${index}`} style={{ marginBottom: '8px' }}>
               <span>{beforeNodes}</span>
               <span
-                className="text-selection confirmed-redex correct-redex"
+                className="text-selection correct-redex"
                 style={{
                   cursor: 'default',
                   display: 'inline',
-                  backgroundColor: `${color}33`,
-                  border: `2px solid ${color}`,
+                  backgroundColor: 'rgba(0, 255, 30, 0.12)',
+                  borderRadius: '3px',
+                  outline: '2px solid rgb(2, 144, 35)',
                 }}
               >
                 {highlightNodes}
@@ -628,7 +619,7 @@ export const ApplicationLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
             </span>
           ) : (
             <span className="incorrect">
-              ✗ Incorrect. You selected {response.selectedRanges.length} application{response.selectedRanges.length !== 1 ? 's' : ''}, but there {appCount === 1 ? 'is' : 'are'} {appCount} correct application{appCount !== 1 ? 's' : ''}.
+              ✗ Incorrect. You selected {response.selectedRanges.length} application{response.selectedRanges.length !== 1 ? 's' : ''}, but there {appCount === 1 ? 'is' : 'are'} {appCount} correct application{appCount !== 1 ? 's' : ''}. Remember to click the "Confirm Selection" button after highlighting each application.
             </span>
           )}
         </p>
@@ -661,12 +652,12 @@ export const ApplicationLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
             fontSize: '18px',
             fontFamily: 'monospace',
             lineHeight: '1.8',
-            userSelect: 'text',
-            cursor: 'text',
+            userSelect: isSubmitted ? 'none' : 'text',
+            cursor: isSubmitted ? 'default' : 'text',
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',
           }}
-          onMouseUp={handleMouseUp}
+          onMouseUp={isSubmitted ? undefined : handleMouseUp}
         >
           {renderExpressionWithHighlights()}
         </div>
@@ -698,8 +689,8 @@ export const ApplicationLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
             style={{
               marginBottom: '20px',
               padding: '20px',
-              backgroundColor: '#f0f7ff',
-              border: '2px solid #b3d9ff',
+              backgroundColor: '#f0f0f0',
+              border: '2px solid #dcdcdc',
               borderRadius: '8px',
               fontSize: '18px',
               fontFamily: 'monospace',
@@ -723,48 +714,31 @@ export const ApplicationLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
             )}
           </p>
           {isSubmitted && isCorrect !== null && (
-            <div
-              style={{
-                marginTop: '15px',
-                padding: '15px',
-                borderRadius: '8px',
-                backgroundColor: isCorrect ? '#d4edda' : '#f8d7da',
-                border: `2px solid ${isCorrect ? '#28a745' : '#dc3545'}`,
-              }}
-            >
+            <p style={{ marginBottom: '12px' }}>
               {isCorrect ? (
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#28a745', marginBottom: '8px' }}>
-                    Correct!
-                  </div>
-                  <div className="correct" style={{ fontSize: '16px' }}>
-                    You identified all {applicationRanges.length} application{applicationRanges.length !== 1 ? 's' : ''}.
-                  </div>
-                </div>
+                <span className="correct">✓ Correct. All applications identified.</span>
               ) : (
-                <p className="incorrect" style={{ margin: 0 }}>
-                  ✗ Incorrect. You selected {confirmedSelections.length} application{confirmedSelections.length !== 1 ? 's' : ''}, but there {applicationRanges.length === 1 ? 'is' : 'are'} {applicationRanges.length} correct application{applicationRanges.length !== 1 ? 's' : ''}.
-                </p>
+                <span className="incorrect">✗ Some applications are incorrect. Try again or show answer.</span>
               )}
-            </div>
+            </p>
           )}
           <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
             <button
               onClick={handleConfirmSelection}
-              disabled={!currentSelection}
+              disabled={!currentSelection || isSubmitted}
               style={{ fontSize: '14px', padding: '6px 12px' }}
             >
               Confirm Selection
             </button>
             <button
               onClick={handleClearCurrentSelection}
-              disabled={!currentSelection}
+              disabled={!currentSelection || isSubmitted}
               style={{ fontSize: '14px', padding: '6px 12px' }}
             >
               Reset Current Highlight
             </button>
             {(confirmedSelections.length > 0 || currentSelection) && (
-              <button onClick={handleClearAll} style={{ fontSize: '14px', padding: '6px 12px' }}>
+              <button onClick={handleClearAll} disabled={isSubmitted} style={{ fontSize: '14px', padding: '6px 12px' }}>
                 Reset Highlights
               </button>
             )}

@@ -217,6 +217,21 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
 
   const parenPairMap = useMemo(() => getParenPairMap(displayStr), [displayStr]);
 
+  const isCorrect = useMemo(() => {
+    if (!isSubmitted) return null;
+    const correctRanges = Array.from(redexToRangeMap.values());
+    const selectedRanges = confirmedRedexes.map(cr => cr.range);
+    const selectedRangeKeys = new Set(selectedRanges.map(r => `${r.start}-${r.end}`));
+    const correctRangeKeys = new Set(correctRanges.map(r => `${r.start}-${r.end}`));
+    const allCorrectSelected = correctRanges.every(range =>
+      selectedRangeKeys.has(`${range.start}-${range.end}`)
+    );
+    const noIncorrectSelected = selectedRanges.every(range =>
+      correctRangeKeys.has(`${range.start}-${range.end}`)
+    );
+    return allCorrectSelected && noIncorrectSelected && selectedRanges.length === correctRanges.length;
+  }, [isSubmitted, confirmedRedexes, redexToRangeMap]);
+
   const handleTextSelection = () => {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
@@ -299,7 +314,7 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
     // Find which correct redex range matches the current selection
     // Check if the selection range matches any correct redex range
 
-    console.log('currentSelection', currentSelection);
+    // console.log('currentSelection', currentSelection);
     
     if (currentSelection) {
       // Selection matches a correct redex range - add it
@@ -361,36 +376,33 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
     
     const isCorrect = allCorrectSelected && noIncorrectSelected && selectedRanges.length === correctRanges.length;
 
-    const response = {
-      question: currentQuestion.question,
-      questionStr: currentQuestion.questionStr,
-      selectedRedexes: selectedRanges,
-      correctRedexes: currentQuestion.correctRedexes,
-      isCorrect,
-    };
-
-    setResponses([...responses, response]);
     setIsSubmitted(true);
-
-    if (isCorrect) {
-      // Generate new question
-      const newQuestion = new_question();
-      const newCorrectRedexes = newQuestion.redexes();
-      questions.push({
-        question: newQuestion,
-        questionStr: String(newQuestion),
-        correctRedexes: newCorrectRedexes,
-      });
-      setCurrentIndex(currentIndex + 1);
-      setConfirmedRedexes([]);
-      setCurrentSelection(null);
-      setShowAnswers(false);
-      setIsSubmitted(false);
-    }
-    // Don't automatically show answers - user must click button
   };
 
   const handleNext = () => {
+    if (isSubmitted) {
+      const correctRanges = Array.from(redexToRangeMap.values());
+      const selectedRanges = confirmedRedexes.map(cr => cr.range);
+      const selectedRangeKeys = new Set(selectedRanges.map(r => `${r.start}-${r.end}`));
+      const correctRangeKeys = new Set(correctRanges.map(r => `${r.start}-${r.end}`));
+      const allCorrectSelected = correctRanges.every(range =>
+        selectedRangeKeys.has(`${range.start}-${range.end}`)
+      );
+      const noIncorrectSelected = selectedRanges.every(range =>
+        correctRangeKeys.has(`${range.start}-${range.end}`)
+      );
+      const isCorrect = allCorrectSelected && noIncorrectSelected && selectedRanges.length === correctRanges.length;
+      setResponses(prev => [
+        ...prev,
+        {
+          question: currentQuestion.question,
+          questionStr: currentQuestion.questionStr,
+          selectedRedexes: selectedRanges,
+          correctRedexes: currentQuestion.correctRedexes,
+          isCorrect,
+        },
+      ]);
+    }
     if (currentIndex + 1 < questions.length) {
       setCurrentIndex(currentIndex + 1);
       setConfirmedRedexes([]);
@@ -415,8 +427,6 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
   };
 
   const handleReset = () => {
-    setConfirmedRedexes([]);
-    setCurrentSelection(null);
     setShowAnswers(false);
     setIsSubmitted(false);
   };
@@ -704,13 +714,15 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
                 </span>
                 <span>{afterNodes}</span>
               </span>
-              <button
-                type="button"
-                onClick={() => handleRemoveConfirmed(rangeKey)}
-                style={{ fontSize: '12px', padding: '4px 8px', flexShrink: 0 }}
-              >
-                Remove
-              </button>
+              {!isSubmitted && (
+                <button
+                  type="button"
+                  onClick={() => handleRemoveConfirmed(rangeKey)}
+                  style={{ fontSize: '12px', padding: '4px 8px', flexShrink: 0 }}
+                >
+                  Remove
+                </button>
+              )}
             </div>
           );
         })}
@@ -792,8 +804,16 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
           <div style={{ marginBottom: '10px' }}>
             <p>
               <strong>Confirmed redexes:</strong> {confirmedRedexes.length}
-
             </p>
+            {isSubmitted && isCorrect !== null && (
+              <p style={{ marginBottom: '12px' }}>
+                {isCorrect ? (
+                  <span className="correct">✓ Correct. All redexes found.</span>
+                ) : (
+                  <span className="incorrect">✗ Some redexes are incorrect. Try again or show answer.</span>
+                )}
+              </p>
+            )}
             <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
               <button
                 onClick={handleConfirmSelection}
