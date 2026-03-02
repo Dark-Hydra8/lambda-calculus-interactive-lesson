@@ -54,22 +54,6 @@ export function all_variables(obj: LambdaObject): Set<string> {
 	return variables;
 }
 
-export function max_redex_height(obj: LambdaObject) : number {
-	if (obj instanceof Variable) {
-		return 0;
-	} else if (obj instanceof Lambda) {
-		return max_redex_height(obj.get_body());
-	} else if (obj instanceof Application) {
-		let height = Math.max(max_redex_height(obj.get_left()), max_redex_height(obj.get_right()));
-		if (obj.get_left() instanceof Lambda) {
-			height++;
-		}
-		return height;
-	} else {
-		throw new Error(`Unknown node type: ${obj}`);
-	}
-}
-
 class VariableName {
 	public name: number | string;
 
@@ -183,6 +167,16 @@ export abstract class LambdaObject {
 		return variables;
 	}
 
+	public lambda_depth() : number {
+		if (this.parent === null) {
+			return 0;
+		} else if (this.parent instanceof Lambda) {
+			return this.parent.lambda_depth() + 1;
+		} else {
+			return this.parent.lambda_depth();
+		}
+	}
+
 	public abstract copy() : LambdaObject;
 	public abstract redexes() : Application[];
 	public abstract redex_ranges() : Range[];
@@ -191,6 +185,8 @@ export abstract class LambdaObject {
 	public abstract eq(other: LambdaObject, var_mapping: VariableMapping | null) : boolean;
 	public abstract toString() : string;
 	public abstract repr() : string;
+	public abstract get_free_vars_list() : Variable[];
+	public abstract refresh_free_vars() : void;
 }
 
 export abstract class LambdaTree extends LambdaObject {
@@ -365,9 +361,21 @@ export class Lambda extends LambdaTree {
 	public get_body() : LambdaObject {
 		return this.right;
 	}
-}
 
-let count = 0;
+	public get_free_vars_list() : Variable[] {
+		let body_list = this.right.get_free_vars_list();
+		body_list = body_list.filter(variable => variable.get_symbol() !== this.get_parameter().get_symbol());
+		return body_list;
+	}
+
+	public refresh_free_vars() : void {
+		this.free_vars = new Set([...this.get_body().get_free_vars()]);
+		this.free_vars.delete(this.get_parameter().get_symbol());
+		if (this.parent !== null) {
+			this.parent.refresh_free_vars();
+		}
+	}
+}
 
 export class Application extends LambdaTree {
 	public constructor(left: LambdaObject, right: LambdaObject) {
@@ -494,6 +502,17 @@ export class Application extends LambdaTree {
 		}
 		return this.right.eq(other.right, var_mapping) && this.left.eq(other.left, var_mapping);
 	}
+
+	public get_free_vars_list() : Variable[] {
+		return [...this.left.get_free_vars_list(), ...this.right.get_free_vars_list()];
+	}
+
+	public refresh_free_vars() : void {
+		this.free_vars = new Set([...this.left.get_free_vars(), ...this.right.get_free_vars()]);
+		if (this.parent !== null) {
+			this.parent.refresh_free_vars();
+		}
+	}
 }
 
 export class Variable extends LambdaObject {
@@ -567,6 +586,22 @@ export class Variable extends LambdaObject {
 			is_parameter = false;
 		}
 		return is_parameter;
+	}
+
+	public get_free_vars_list() : Variable[] {
+		return [this];
+	}
+
+	public set_symbol(symbol: string) : void {
+		this.symbol = symbol;
+		this.refresh_free_vars();
+	}
+	
+	public refresh_free_vars() : void {
+		this.free_vars = new Set([this.get_symbol()]);
+		if (this.parent !== null) {
+			this.parent.refresh_free_vars();
+		}
 	}
 }
 

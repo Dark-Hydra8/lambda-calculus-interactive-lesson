@@ -357,3 +357,15 @@ test("test alpha renaming functionality", () => {
 	reduced = norm_ord_reduce(lambdaObjs[0]) as LambdaObject;
 	expect(reduced.eq(lambdaObjs[1], null)).toEqual(true);
 });
+
+test("test the detection of free variables", () => {
+	let lambdaObj = new Parser(
+		"λx.(λy.y) x"
+	).parse_input()[0] as LambdaObject;
+	expect(lambdaObj.get_free_vars()).toEqual(new Set());
+
+	lambdaObj = new Parser(
+		"λx.(λy.w y) z"
+	).parse_input()[0] as LambdaObject;
+	expect(lambdaObj.get_free_vars()).toEqual(new Set(["z", "w"]));
+});
