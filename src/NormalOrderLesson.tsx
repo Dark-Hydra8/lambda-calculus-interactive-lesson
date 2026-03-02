@@ -76,7 +76,7 @@ type SubmitResult = {
   parseErrorMessage?: string;
 };
 
-export const NormalOrderLesson: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+export const NormalOrderLesson: React.FC<{ onBack: () => void; onCorrectWithoutShowAnswer?: () => void }> = ({ onBack, onCorrectWithoutShowAnswer }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswer, setUserAnswer] = useState('');
   const [responses, setResponses] = useState<Response[]>([]);
@@ -140,6 +140,7 @@ export const NormalOrderLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
     }
     setInputError(null);
     const isCorrect = parsedAnswer.eq(correctAnswer, null);
+    if (isCorrect) onCorrectWithoutShowAnswer?.();
     setSubmitResult({
       userAnswer: parsedAnswer,
       userAnswerStr: String(parsedAnswer),

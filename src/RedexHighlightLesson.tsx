@@ -131,7 +131,7 @@ type ConfirmedRedex = {
   range: SelectionRange;
 };
 
-export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+export const RedexHighlightLesson: React.FC<{ onBack: () => void; onCorrectWithoutShowAnswer?: () => void }> = ({ onBack, onCorrectWithoutShowAnswer }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentSelection, setCurrentSelection] = useState<SelectionRange | null>(null);
   const [confirmedRedexes, setConfirmedRedexes] = useState<ConfirmedRedex[]>([]);
@@ -376,6 +376,7 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void }> = ({ onBack 
     
     const isCorrect = allCorrectSelected && noIncorrectSelected && selectedRanges.length === correctRanges.length;
 
+    if (isCorrect) onCorrectWithoutShowAnswer?.();
     setIsSubmitted(true);
   };
 

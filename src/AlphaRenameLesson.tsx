@@ -276,7 +276,7 @@ type ResponseRecord = {
   isCorrect: boolean;
 };
 
-export const AlphaRenameLesson: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+export const AlphaRenameLesson: React.FC<{ onBack: () => void; onCorrectWithoutShowAnswer?: () => void }> = ({ onBack, onCorrectWithoutShowAnswer }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOccurrences, setSelectedOccurrences] = useState<Set<string>>(new Set());
   const [showResult, setShowResult] = useState(false);
@@ -383,6 +383,7 @@ export const AlphaRenameLesson: React.FC<{ onBack: () => void }> = ({ onBack }) 
       Array.from(selectedSet).every(id => correctSet.has(id)) &&
       Array.from(correctSet).every(id => selectedSet.has(id));
 
+    if (correct) onCorrectWithoutShowAnswer?.();
     setIsCorrect(correct);
   };
 

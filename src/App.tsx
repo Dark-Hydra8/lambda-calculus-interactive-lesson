@@ -1,43 +1,72 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import './styles.css';
 import { NormalOrderLesson } from './NormalOrderLesson';
 import { RedexHighlightLesson } from './RedexHighlightLesson';
 import { AlphaRenameLesson } from './AlphaRenameLesson';
 import { ApplicationLesson } from './ApplicationLesson';
 import { VariableBindingLesson } from './VariableBindingLesson';
+import { AuthProvider, useAuth } from './auth/AuthContext';
+import { LoginPage } from './auth/LoginPage';
+import { SettingsMenu } from './auth/SettingsMenu';
+import { SetNewPasswordPage } from './auth/SetNewPasswordPage';
+import { isSupabaseConfigured } from './supabaseClient';
+import { recordCorrectAnswerWithoutShowAnswer } from './api/lessonProgress';
+import type { LessonId } from './supabase/types';
 
 type Lesson = 'menu' | 'normal-order' | 'redex-highlight' | 'alpha-rename' | 'application' | 'variable-binding';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
+  const auth = useAuth();
   const [currentLesson, setCurrentLesson] = useState<Lesson>('menu');
 
+  const recordCorrect = useCallback(
+    (lessonId: LessonId) => {
+      if (auth?.user) {
+        recordCorrectAnswerWithoutShowAnswer(lessonId);
+      }
+    },
+    [auth?.user]
+  );
+
+  const withLayout = (content: React.ReactNode) => (
+    <>
+      <SettingsMenu />
+      {content}
+    </>
+  );
+
   if (currentLesson === 'normal-order') {
-    return <NormalOrderLesson onBack={() => setCurrentLesson('menu')} />;
+    return withLayout(<NormalOrderLesson onBack={() => setCurrentLesson('menu')} onCorrectWithoutShowAnswer={() => recordCorrect('normal-order')} />);
   }
 
   if (currentLesson === 'redex-highlight') {
-    return <RedexHighlightLesson onBack={() => setCurrentLesson('menu')} />;
+    return withLayout(<RedexHighlightLesson onBack={() => setCurrentLesson('menu')} onCorrectWithoutShowAnswer={() => recordCorrect('redex-highlight')} />);
   }
 
   if (currentLesson === 'alpha-rename') {
-    return <AlphaRenameLesson onBack={() => setCurrentLesson('menu')} />;
+    return withLayout(<AlphaRenameLesson onBack={() => setCurrentLesson('menu')} onCorrectWithoutShowAnswer={() => recordCorrect('alpha-rename')} />);
   }
 
   if (currentLesson === 'application') {
-    return <ApplicationLesson onBack={() => setCurrentLesson('menu')} />;
+    return withLayout(<ApplicationLesson onBack={() => setCurrentLesson('menu')} onCorrectWithoutShowAnswer={() => recordCorrect('application')} />);
   }
 
   if (currentLesson === 'variable-binding') {
-    return <VariableBindingLesson onBack={() => setCurrentLesson('menu')} />;
+    return withLayout(<VariableBindingLesson onBack={() => setCurrentLesson('menu')} onCorrectWithoutShowAnswer={() => recordCorrect('variable-binding')} />);
   }
 
-  return (
+  return withLayout(
     <div className="container">
       <h1>Lambda Calculus Interactive Lessons</h1>
+      {auth?.profile?.asurite_id && (
+        <p style={{ marginBottom: '10px', fontSize: '14px', color: '#666' }}>
+          Signed in as <strong>{auth.profile.asurite_id}</strong>
+        </p>
+      )}
       <p style={{ marginBottom: '30px', color: '#666' }}>
         Choose a lesson to begin learning lambda calculus:
       </p>
-      
+
       <div className="lesson-menu">
         <div className="lesson-card" onClick={() => setCurrentLesson('application')}>
           <h2>Identify Applications</h2>
@@ -64,4 +93,50 @@ const App: React.FC = () => {
   );
 };
 
-export default App;
+const App: React.FC = () => {
+  const auth = useAuth();
+  const [showSetPassword, setShowSetPassword] = useState(false);
+
+  useEffect(() => {
+    const hash = typeof window !== 'undefined' ? window.location.hash : '';
+    const params = new URLSearchParams(hash.slice(1));
+    setShowSetPassword(params.get('type') === 'recovery');
+  }, []);
+
+  if (!isSupabaseConfigured()) {
+    return (
+      <div className="container">
+        <h1>Lambda Calculus Interactive Lessons</h1>
+        <p style={{ marginTop: '20px', color: '#666', maxWidth: '480px' }}>
+          Sign in is required to take lessons. Configure Supabase to enable authentication (see VERCEL_SUPABASE_SETUP.md).
+        </p>
+      </div>
+    );
+  }
+
+  if (showSetPassword) {
+    return <SetNewPasswordPage onDone={() => setShowSetPassword(false)} />;
+  }
+
+  if (auth?.loading) {
+    return (
+      <div className="container">
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
+  if (!auth?.user) {
+    return <LoginPage />;
+  }
+
+  return <AppContent />;
+};
+
+const AppWithAuth: React.FC = () => (
+  <AuthProvider>
+    <App />
+  </AuthProvider>
+);
+
+export default AppWithAuth;

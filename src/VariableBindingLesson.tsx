@@ -226,7 +226,7 @@ function PreviousQuestionItem({ response, index }: { response: ResponseRecord; i
   );
 }
 
-export const VariableBindingLesson: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+export const VariableBindingLesson: React.FC<{ onBack: () => void; onCorrectWithoutShowAnswer?: () => void }> = ({ onBack, onCorrectWithoutShowAnswer }) => {
   const [question, setQuestion] = useState<LambdaObject>(() => newQuestion());
   const [selections, setSelections] = useState<Record<string, string>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -286,6 +286,10 @@ export const VariableBindingLesson: React.FC<{ onBack: () => void }> = ({ onBack
   }, [isSubmitted, selections, occurrencesWithDropdown, correctAnswers]);
 
   const handleSubmit = () => {
+    const correct = occurrencesWithDropdown.every(
+      occ => (selections[occ.id] || '') === correctAnswers[occ.id]
+    );
+    if (correct) onCorrectWithoutShowAnswer?.();
     setIsSubmitted(true);
   };
 
