@@ -463,10 +463,12 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void; onCorrectWitho
       currentQuestion.correctRedexes.forEach((redex, index) => {
         const range = redexToRangeMap.get(redex);
         if (range) {
-          const startWithSpaces = positionWithSpaces(origStr, range.start);
-          const endWithSpaces = positionWithSpaces(origStr, range.end - 1);
-          const startDisp = originalToDisplay[startWithSpaces] ?? 0;
-          const endDisp = originalToDisplay[endWithSpaces] ?? text.length - 1;
+          // range.start / range.end are measured in non-space characters on the
+          // original question string. Map them directly into the display string,
+          // which may have extra spaces around parentheses, by counting
+          // non-space characters in displayStr itself.
+          const startDisp = positionWithSpaces(text, range.start);
+          const endDisp = positionWithSpaces(text, range.end - 1);
           const color = redexColors[index % redexColors.length];
           if (!bracketMap.has(startDisp)) bracketMap.set(startDisp, []);
           bracketMap.get(startDisp)!.push({ color, type: 'start' });

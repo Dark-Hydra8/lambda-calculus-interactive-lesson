@@ -535,10 +535,12 @@ export const ApplicationLesson: React.FC<{ onBack: () => void; onCorrectWithoutS
         Array<{ color: string; type: 'start' | 'end'; bodyIndex: number }>
       >();
       sortedApps.forEach((ar, bodyIndex) => {
-        const startWithSpaces = positionWithSpaces(origStr, ar.start);
-        const endWithSpaces = positionWithSpaces(origStr, ar.end - 1);
-        const startDisp = respO2D[startWithSpaces] ?? 0;
-        const endDisp = respO2D[endWithSpaces] ?? text.length - 1;
+        // ar.start / ar.end are measured in non-space characters on the
+        // original question string. Map them directly into the display string,
+        // which may have extra spaces around parentheses, by counting
+        // non-space characters in the display string itself.
+        const startDisp = positionWithSpaces(text, ar.start);
+        const endDisp = positionWithSpaces(text, ar.end - 1);
         const color = colors[bodyIndex % colors.length];
         if (!bracketMap.has(startDisp)) bracketMap.set(startDisp, []);
         bracketMap.get(startDisp)!.push({ color, type: 'start', bodyIndex });
