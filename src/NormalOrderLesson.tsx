@@ -210,6 +210,11 @@ export const NormalOrderLesson: React.FC<{ onBack: () => void; onCorrectWithoutS
       <p style={{ marginBottom: '20px', color: '#333', whiteSpace: 'pre-line' }}>
         Reduce each expression using normal order evaluation. Enter the result in the text box and submit.
       </p>
+      <p style={{ marginBottom: '16px', fontSize: '13px', color: '#666' }}>
+        <em>
+          Note: This lesson records how many questions you answer correctly (excluding ones where you click &quot;Show answer&quot;) for progress tracking.
+        </em>
+      </p>
 
       {responses.length > 0 && (
         <div style={{ marginBottom: '24px' }}>

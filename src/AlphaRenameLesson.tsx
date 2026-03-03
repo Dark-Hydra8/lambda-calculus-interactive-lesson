@@ -544,6 +544,11 @@ export const AlphaRenameLesson: React.FC<{ onBack: () => void; onCorrectWithoutS
         The first line is the original expression (green = redex). The second line is after reducing that redex; check the variables in the reduced expression that were renamed (e.g. x became x') to avoid variable capture.
         Variables in different positions with the same name are handled separately.
       </p>
+      <p style={{ marginBottom: '16px', fontSize: '13px', color: '#666' }}>
+        <em>
+          Note: This lesson records how many questions you answer correctly (excluding ones where you click &quot;Show answer&quot;) for progress tracking.
+        </em>
+      </p>
 
       {responses.map((res, idx) => (
         <div

@@ -498,6 +498,11 @@ export const VariableBindingLesson: React.FC<{ onBack: () => void; onCorrectWith
         Each lambda abstraction in the expression is labeled with a number (λ₁, λ₂, …).
         For each variable, choose which lambda it is bound to from the dropdown, or "free variable" if it is not bound by any lambda.
       </p>
+      <p style={{ marginBottom: '16px', fontSize: '13px', color: '#666' }}>
+        <em>
+          Note: This lesson records how many questions you answer correctly (excluding ones where you click &quot;Show answer&quot;) for progress tracking.
+        </em>
+      </p>
 
       {responses.length > 0 && (
         <div style={{ marginBottom: '24px' }}>

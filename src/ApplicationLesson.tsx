@@ -642,6 +642,11 @@ export const ApplicationLesson: React.FC<{ onBack: () => void; onCorrectWithoutS
       </div>
       <h1>Identify Applications</h1>
       <p style={{ marginBottom: '20px', color: '#000', whiteSpace: 'pre-line' }}>{instructions}</p>
+      <p style={{ marginBottom: '16px', fontSize: '13px', color: '#666' }}>
+        <em>
+          Note: This lesson records how many questions you answer correctly (excluding ones where you click &quot;Show answer&quot;) for progress tracking.
+        </em>
+      </p>
 
       {responses.map((res, idx) => {
         const showBrackets = idx < currentIndex;

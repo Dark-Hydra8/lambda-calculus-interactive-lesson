@@ -755,6 +755,11 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void; onCorrectWitho
         Select text in the expression below to highlight redexes one at a time. Each selection will identify the redex(es) it covers and add them to your confirmed highlights.
         You can see all your previous highlights for the current question.
       </p>
+      <p style={{ marginBottom: '16px', fontSize: '13px', color: '#666' }}>
+        <em>
+          Note: This lesson records how many questions you answer correctly (excluding ones where you click &quot;Show answer&quot;) for progress tracking.
+        </em>
+      </p>
 
       {responses.map((res, idx) => (
         <div key={idx} className="response">
