@@ -85,6 +85,7 @@ export const NormalOrderLesson: React.FC<{ onBack: () => void; onCorrectWithoutS
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submitResult, setSubmitResult] = useState<SubmitResult | null>(null);
   const [showCorrectAnswerForCurrent, setShowCorrectAnswerForCurrent] = useState(false);
+  const [hadShownAnswerForCurrentQuestion, setHadShownAnswerForCurrentQuestion] = useState(false);
 
   if (questions.length === 0) {
     let question = new_question();
@@ -140,7 +141,7 @@ export const NormalOrderLesson: React.FC<{ onBack: () => void; onCorrectWithoutS
     }
     setInputError(null);
     const isCorrect = parsedAnswer.eq(correctAnswer, null);
-    if (isCorrect) onCorrectWithoutShowAnswer?.();
+    if (isCorrect && !hadShownAnswerForCurrentQuestion) onCorrectWithoutShowAnswer?.();
     setSubmitResult({
       userAnswer: parsedAnswer,
       userAnswerStr: String(parsedAnswer),
@@ -174,6 +175,7 @@ export const NormalOrderLesson: React.FC<{ onBack: () => void; onCorrectWithoutS
     setIsSubmitted(false);
     setUserAnswer('');
     setShowCorrectAnswerForCurrent(false);
+    setHadShownAnswerForCurrentQuestion(false);
 
     const question = new_question();
     let answer = question.copy();
@@ -323,7 +325,7 @@ export const NormalOrderLesson: React.FC<{ onBack: () => void; onCorrectWithoutS
                   <button onClick={handleReset}>Try again</button>
                 )}
                 {!submitResult.isCorrect && (
-                  <button onClick={() => setShowCorrectAnswerForCurrent(true)}>Show correct answer</button>
+                  <button onClick={() => { setShowCorrectAnswerForCurrent(true); setHadShownAnswerForCurrentQuestion(true); }}>Show correct answer</button>
                 )}
                 <button onClick={handleNext}>Next question</button>
               </>

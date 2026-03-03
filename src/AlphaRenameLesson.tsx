@@ -282,6 +282,7 @@ export const AlphaRenameLesson: React.FC<{ onBack: () => void; onCorrectWithoutS
   const [showResult, setShowResult] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showAnswer, setShowAnswer] = useState(false);
+  const [hadShownAnswerForCurrentQuestion, setHadShownAnswerForCurrentQuestion] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [responses, setResponses] = useState<ResponseRecord[]>([]);
 
@@ -383,11 +384,12 @@ export const AlphaRenameLesson: React.FC<{ onBack: () => void; onCorrectWithoutS
       Array.from(selectedSet).every(id => correctSet.has(id)) &&
       Array.from(correctSet).every(id => selectedSet.has(id));
 
-    if (correct) onCorrectWithoutShowAnswer?.();
+    if (correct && !hadShownAnswerForCurrentQuestion) onCorrectWithoutShowAnswer?.();
     setIsCorrect(correct);
   };
 
   const handleNext = () => {
+    setHadShownAnswerForCurrentQuestion(false);
     if (isSubmitted && isCorrect !== null) {
       const copy = currentQuestion.question.copy();
       const reduced = norm_ord_reduce(copy) ?? copy;
@@ -612,7 +614,7 @@ export const AlphaRenameLesson: React.FC<{ onBack: () => void; onCorrectWithoutS
             {isSubmitted && (
               <>
                 {!showAnswer && !isCorrect && (
-                  <button onClick={() => setShowAnswer(true)}>
+                  <button onClick={() => { setShowAnswer(true); setHadShownAnswerForCurrentQuestion(true); }}>
                     Show Answer
                   </button>
                 )}

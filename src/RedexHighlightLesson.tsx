@@ -137,6 +137,7 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void; onCorrectWitho
   const [confirmedRedexes, setConfirmedRedexes] = useState<ConfirmedRedex[]>([]);
   const [showResult, setShowResult] = useState(false);
   const [showAnswers, setShowAnswers] = useState(false);
+  const [hadShownAnswerForCurrentQuestion, setHadShownAnswerForCurrentQuestion] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [responses, setResponses] = useState<Array<{
     question: LambdaObject;
@@ -376,11 +377,12 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void; onCorrectWitho
     
     const isCorrect = allCorrectSelected && noIncorrectSelected && selectedRanges.length === correctRanges.length;
 
-    if (isCorrect) onCorrectWithoutShowAnswer?.();
+    if (isCorrect && !hadShownAnswerForCurrentQuestion) onCorrectWithoutShowAnswer?.();
     setIsSubmitted(true);
   };
 
   const handleNext = () => {
+    setHadShownAnswerForCurrentQuestion(false);
     if (isSubmitted) {
       const correctRanges = Array.from(redexToRangeMap.values());
       const selectedRanges = confirmedRedexes.map(cr => cr.range);
@@ -434,6 +436,7 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void; onCorrectWitho
 
   const handleShowAnswer = () => {
     setShowAnswers(true);
+    setHadShownAnswerForCurrentQuestion(true);
   };
 
   // Render the expression with highlights (excluding confirmed redexes, handles overlaps)

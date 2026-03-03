@@ -231,6 +231,7 @@ export const VariableBindingLesson: React.FC<{ onBack: () => void; onCorrectWith
   const [selections, setSelections] = useState<Record<string, string>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showAnswer, setShowAnswer] = useState(false);
+  const [hadShownAnswerForCurrentQuestion, setHadShownAnswerForCurrentQuestion] = useState(false);
   const [responses, setResponses] = useState<ResponseRecord[]>([]);
 
   const { lambdasInOrder, lambdaToNumber, variableOccurrences } = useMemo(() => {
@@ -289,7 +290,7 @@ export const VariableBindingLesson: React.FC<{ onBack: () => void; onCorrectWith
     const correct = occurrencesWithDropdown.every(
       occ => (selections[occ.id] || '') === correctAnswers[occ.id]
     );
-    if (correct) onCorrectWithoutShowAnswer?.();
+    if (correct && !hadShownAnswerForCurrentQuestion) onCorrectWithoutShowAnswer?.();
     setIsSubmitted(true);
   };
 
@@ -299,6 +300,7 @@ export const VariableBindingLesson: React.FC<{ onBack: () => void; onCorrectWith
   };
 
   const handleNext = () => {
+    setHadShownAnswerForCurrentQuestion(false);
     const questionStr = question.toString();
     const correct = occurrencesWithDropdown.every(
       occ => (selections[occ.id] || '') === correctAnswers[occ.id]
@@ -540,7 +542,7 @@ export const VariableBindingLesson: React.FC<{ onBack: () => void; onCorrectWith
           {isSubmitted && (
             <>
               {!isCorrect && (
-                <button onClick={() => setShowAnswer(true)}>Show Answer</button>
+                <button onClick={() => { setShowAnswer(true); setHadShownAnswerForCurrentQuestion(true); }}>Show Answer</button>
               )}
               {!isCorrect && (
                 <button onClick={handleReset}>Try Again</button>

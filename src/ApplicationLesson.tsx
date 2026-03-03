@@ -145,6 +145,7 @@ export const ApplicationLesson: React.FC<{ onBack: () => void; onCorrectWithoutS
   const [currentSelection, setCurrentSelection] = useState<SelectionRange | null>(null);
   const [confirmedSelections, setConfirmedSelections] = useState<ConfirmedSelection[]>([]);
   const [showAnswers, setShowAnswers] = useState(false);
+  const [hadShownAnswerForCurrentQuestion, setHadShownAnswerForCurrentQuestion] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [responses, setResponses] = useState<Array<{
     question: LambdaObject;
@@ -280,11 +281,12 @@ export const ApplicationLesson: React.FC<{ onBack: () => void; onCorrectWithoutS
     const isCorrect =
       allCorrectSelected && noIncorrectSelected && selectedRanges.length === correctRanges.length;
 
-    if (isCorrect) onCorrectWithoutShowAnswer?.();
+    if (isCorrect && !hadShownAnswerForCurrentQuestion) onCorrectWithoutShowAnswer?.();
     setIsSubmitted(true);
   };
 
   const handleNext = () => {
+    setHadShownAnswerForCurrentQuestion(false);
     if (isSubmitted && isCorrect !== null) {
       setResponses(prev => [
         ...prev,
@@ -314,7 +316,10 @@ export const ApplicationLesson: React.FC<{ onBack: () => void; onCorrectWithoutS
     }
   };
 
-  const handleShowAnswer = () => setShowAnswers(true);
+  const handleShowAnswer = () => {
+    setShowAnswers(true);
+    setHadShownAnswerForCurrentQuestion(true);
+  };
 
   const renderExpressionWithHighlights = () => {
     const text = displayStr;
