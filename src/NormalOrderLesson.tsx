@@ -61,7 +61,7 @@ function new_question() : LambdaObject {
     let l = norm.get_left() as Lambda;
     vari = l.get_parameter();
     body = l.get_body();
-  } while (lambda.redexes().length < redexes || !(body !== null && vari !== null && has_variable(body, vari)) && String(lambda).length < 30);
+  } while ((lambda.redexes().length < redexes || !(body !== null && vari !== null && has_variable(body, vari))) && String(lambda).length < 20);
   return lambda;
 }
 
