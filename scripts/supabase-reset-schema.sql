@@ -33,7 +33,8 @@ create policy "Users can insert own profile"
 create policy "Users can update own profile"
   on public.profiles for update using (auth.uid() = id);
 
--- Trigger: create profile when a new auth user is created (avoids RLS on client insert)
+-- Trigger: create profile when a new auth user is created (avoids RLS on client insert).
+-- Fallback for asurite_id uses user id so it is always unique (avoids "Database error saving new user" when email local part would duplicate).
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -43,7 +44,7 @@ as $$
 declare
   asurite text;
 begin
-  asurite := coalesce(NEW.raw_user_meta_data->>'asurite_id', split_part(NEW.email, '@', 1));
+  asurite := coalesce(nullif(trim(NEW.raw_user_meta_data->>'asurite_id'), ''), NEW.id::text);
   insert into public.profiles (id, asurite_id)
   values (NEW.id, asurite);
   return NEW;

@@ -51,7 +51,7 @@ as $$
 declare
   asurite text;
 begin
-  asurite := coalesce(NEW.raw_user_meta_data->>'asurite_id', split_part(NEW.email, '@', 1));
+  asurite := coalesce(nullif(trim(NEW.raw_user_meta_data->>'asurite_id'), ''), NEW.id::text);
   insert into public.profiles (id, asurite_id)
   values (NEW.id, asurite);
   return NEW;
@@ -129,7 +129,31 @@ $$;
 
 ---
 
-## 2. Local development
+## 2. Resend (custom SMTP for auth emails)
+
+Supabase’s built-in email has a low rate limit. To avoid “email rate limit exceeded” and send signup/password-reset emails through [Resend](https://resend.com):
+
+1. **Resend account and API key**
+   - Sign up at [resend.com](https://resend.com).
+   - In the dashboard: **API Keys** → create a key (e.g. “Supabase”).
+   - (Optional) **Domains** → add and verify your domain so “From” can be `noreply@yourdomain.com`. You can start with Resend’s test domain.
+
+2. **Supabase custom SMTP**
+   - In Supabase: **Project settings** (gear) → **Auth** → **SMTP Settings**.
+   - Enable **Custom SMTP** and use:
+     - **Sender email:** a verified address (e.g. `onboarding@resend.dev` for testing, or `noreply@yourdomain.com` once the domain is verified).
+     - **Sender name:** e.g. `Lambda Calculus Lessons`.
+     - **Host:** `smtp.resend.com`
+     - **Port:** `465`
+     - **Username:** `resend`
+     - **Password:** your Resend **API key** (not your Resend account password).
+   - Save. Auth emails (confirm signup, reset password, etc.) will then be sent via Resend.
+
+No code or env vars are required in this repo; configuration is only in the Supabase dashboard.
+
+---
+
+## 3. Local development
 
 1. Copy env example and fill in your Supabase values:
    ```bash
@@ -144,7 +168,7 @@ $$;
 
 ---
 
-## 3. Vercel (frontend)
+## 4. Vercel (frontend)
 
 ### Deploy
 

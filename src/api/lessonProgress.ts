@@ -16,6 +16,7 @@ export async function recordCorrectAnswerWithoutShowAnswer(lessonId: LessonId): 
   if (error) {
     return { error };
   }
+  console.log('[Progress] Synced correct answer for lesson:', lessonId);
   return { error: null };
 }
 
