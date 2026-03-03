@@ -527,7 +527,7 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void; onCorrectWitho
               const char = text[j];
               
               if (bracketInfos && bracketInfos.length > 0) {
-                // Render all opening brackets first
+                // Render all opening brackets first (bracket color independent of parens)
                 bracketInfos.forEach((bracketInfo, idx) => {
                   if (bracketInfo.type === 'start') {
                     renderedChars.push(
@@ -537,10 +537,19 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void; onCorrectWitho
                     );
                   }
                 });
-                
-                // Render the character
-                renderedChars.push(char);
-                
+                // Render the character; still color ( ) by paren map so matching pairs match
+                if (char === '(' || char === ')') {
+                  const parenColor = (parenPairMap.get(j) ?? -1) >= 0 ? PAREN_COLORS[parenPairMap.get(j)! % PAREN_COLORS.length] : undefined;
+                  renderedChars.push(
+                    parenColor ? (
+                      <span key={`paren-${j}`} style={{ color: parenColor, fontWeight: 'bold' }}>{char}</span>
+                    ) : (
+                      <React.Fragment key={`char-${j}`}>{char}</React.Fragment>
+                    )
+                  );
+                } else {
+                  renderedChars.push(<React.Fragment key={`char-${j}`}>{char}</React.Fragment>);
+                }
                 // Render all closing brackets after
                 bracketInfos.forEach((bracketInfo, idx) => {
                   if (bracketInfo.type === 'end') {
