@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import './styles.css';
 import { BetaReductionLesson } from './BetaReductionLesson';
 import { RedexHighlightLesson } from './RedexHighlightLesson';
@@ -11,6 +11,7 @@ import {
   recordCorrectAnswerWithoutShowAnswer,
   recordSubmission,
   recordAnsweredCorrect,
+  getLessonProgress,
 } from './api/lessonProgress';
 import type { LessonId } from './supabase/types';
 import { useUserIdentity, type UserIdentity } from './auth/useUserIdentity';
@@ -23,6 +24,7 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
 }) => {
   const [currentLesson, setCurrentLesson] = useState<Lesson>('menu');
   const [hasFinishedSurvey, setHasFinishedSurvey] = useState(false);
+  const [answeredCorrectByLesson, setAnsweredCorrectByLesson] = useState<Partial<Record<LessonId, number>>>({});
 
   const surveyUrl = `https://docs.google.com/forms/d/e/1FAIpQLSeL7gId09NUjrUHAmzw_4Utz9gTNHHMMF-8NweXYCIbPiGbpw/viewform?usp=pp_url&entry.1056977610=${encodeURIComponent(
     identity?.userId ?? ''
@@ -51,8 +53,49 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
     (lessonId: LessonId) => {
       if (!identity || identityLoading) return;
       recordAnsweredCorrect(lessonId, identity.userId, identity.authToken);
+      setAnsweredCorrectByLesson(prev => ({
+        ...prev,
+        [lessonId]: (prev[lessonId] ?? 0) + 1,
+      }));
     },
     [identity, identityLoading]
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadProgress = async () => {
+      if (!identity || identityLoading) return;
+      const { data, error } = await getLessonProgress(identity.userId, identity.authToken);
+      if (cancelled || error || !data) return;
+
+      const next: Partial<Record<LessonId, number>> = {};
+      for (const row of data) {
+        const lessonId = row.lesson_id as LessonId;
+        next[lessonId] = row.answered_correct ?? 0;
+      }
+      setAnsweredCorrectByLesson(next);
+    };
+
+    loadProgress();
+    return () => {
+      cancelled = true;
+    };
+  }, [identity, identityLoading]);
+
+  const hasLessonCheck = (lessonId: LessonId): boolean => (answeredCorrectByLesson[lessonId] ?? 0) >= 4;
+  const lessonCompletionMessage =
+    'Congradulations! You have finished this task! You can move onto the next one or keep going!';
+  const completionMessage = (lessonId: LessonId) =>
+    hasLessonCheck(lessonId) ? (
+      <div className="container" style={{ marginTop: '12px' }}>
+        <p className="correct">{lessonCompletionMessage}</p>
+      </div>
+    ) : null;
+  const bottomBackToMenuButton = (
+    <div className="container" style={{ marginTop: '12px', marginBottom: '20px' }}>
+      <button onClick={() => setCurrentLesson('menu')}>← Back to Menu</button>
+    </div>
   );
 
   const withLayout = (content: React.ReactNode) => (
@@ -64,56 +107,76 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
 
   if (currentLesson === 'normal-order') {
     return withLayout(
-      <BetaReductionLesson
-        onBack={() => setCurrentLesson('menu')}
-        onSubmit={() => recordSubmit('normal-order')}
-        onAnsweredCorrect={() => recordAnswered('normal-order')}
-        onCorrectWithoutShowAnswer={() => recordCorrect('normal-order')}
-      />
+      <>
+        <BetaReductionLesson
+          onBack={() => setCurrentLesson('menu')}
+          onSubmit={() => recordSubmit('normal-order')}
+          onAnsweredCorrect={() => recordAnswered('normal-order')}
+          onCorrectWithoutShowAnswer={() => recordCorrect('normal-order')}
+        />
+        {completionMessage('normal-order')}
+        {bottomBackToMenuButton}
+      </>
     );
   }
 
   if (currentLesson === 'redex-highlight') {
     return withLayout(
-      <RedexHighlightLesson
-        onBack={() => setCurrentLesson('menu')}
-        onSubmit={() => recordSubmit('redex-highlight')}
-        onAnsweredCorrect={() => recordAnswered('redex-highlight')}
-        onCorrectWithoutShowAnswer={() => recordCorrect('redex-highlight')}
-      />
+      <>
+        <RedexHighlightLesson
+          onBack={() => setCurrentLesson('menu')}
+          onSubmit={() => recordSubmit('redex-highlight')}
+          onAnsweredCorrect={() => recordAnswered('redex-highlight')}
+          onCorrectWithoutShowAnswer={() => recordCorrect('redex-highlight')}
+        />
+        {completionMessage('redex-highlight')}
+        {bottomBackToMenuButton}
+      </>
     );
   }
 
   if (currentLesson === 'alpha-rename') {
     return withLayout(
-      <AlphaRenameLesson
-        onBack={() => setCurrentLesson('menu')}
-        onSubmit={() => recordSubmit('alpha-rename')}
-        onAnsweredCorrect={() => recordAnswered('alpha-rename')}
-        onCorrectWithoutShowAnswer={() => recordCorrect('alpha-rename')}
-      />
+      <>
+        <AlphaRenameLesson
+          onBack={() => setCurrentLesson('menu')}
+          onSubmit={() => recordSubmit('alpha-rename')}
+          onAnsweredCorrect={() => recordAnswered('alpha-rename')}
+          onCorrectWithoutShowAnswer={() => recordCorrect('alpha-rename')}
+        />
+        {completionMessage('alpha-rename')}
+        {bottomBackToMenuButton}
+      </>
     );
   }
 
   if (currentLesson === 'application') {
     return withLayout(
-      <ApplicationLesson
-        onBack={() => setCurrentLesson('menu')}
-        onSubmit={() => recordSubmit('application')}
-        onAnsweredCorrect={() => recordAnswered('application')}
-        onCorrectWithoutShowAnswer={() => recordCorrect('application')}
-      />
+      <>
+        <ApplicationLesson
+          onBack={() => setCurrentLesson('menu')}
+          onSubmit={() => recordSubmit('application')}
+          onAnsweredCorrect={() => recordAnswered('application')}
+          onCorrectWithoutShowAnswer={() => recordCorrect('application')}
+        />
+        {completionMessage('application')}
+        {bottomBackToMenuButton}
+      </>
     );
   }
 
   if (currentLesson === 'variable-binding') {
     return withLayout(
-      <VariableBindingLesson
-        onBack={() => setCurrentLesson('menu')}
-        onSubmit={() => recordSubmit('variable-binding')}
-        onAnsweredCorrect={() => recordAnswered('variable-binding')}
-        onCorrectWithoutShowAnswer={() => recordCorrect('variable-binding')}
-      />
+      <>
+        <VariableBindingLesson
+          onBack={() => setCurrentLesson('menu')}
+          onSubmit={() => recordSubmit('variable-binding')}
+          onAnsweredCorrect={() => recordAnswered('variable-binding')}
+          onCorrectWithoutShowAnswer={() => recordCorrect('variable-binding')}
+        />
+        {completionMessage('variable-binding')}
+        {bottomBackToMenuButton}
+      </>
     );
   }
 
@@ -160,23 +223,23 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
 
       <div className="lesson-menu">
         <div className="lesson-card" onClick={() => setCurrentLesson('application')}>
-          <h2>Identfy Useful Applications</h2>
+          <h2>Identfy Useful Applications {hasLessonCheck('application') ? '✅' : ''}</h2>
           <p>Identify and highlight every application (M applied to N, written M N) in lambda calculus expressions.</p>
         </div>
         <div className="lesson-card" onClick={() => setCurrentLesson('redex-highlight')}>
-          <h2>Redex Highlighting</h2>
+          <h2>Redex Highlighting {hasLessonCheck('redex-highlight') ? '✅' : ''}</h2>
           <p>Identify and highlight all redexes (applications where the left side is a lambda abstraction) in lambda calculus expressions.</p>
         </div>
         <div className="lesson-card" onClick={() => setCurrentLesson('variable-binding')}>
-          <h2>Variable Binding</h2>
+          <h2>Variable Binding {hasLessonCheck('variable-binding') ? '✅' : ''}</h2>
           <p>For each variable in a lambda expression, identify which lambda abstraction it is bound to (or mark it as a free variable).</p>
         </div>
         <div className="lesson-card" onClick={() => setCurrentLesson('alpha-rename')}>
-          <h2>Alpha Renaming</h2>
+          <h2>Alpha Renaming {hasLessonCheck('alpha-rename') ? '✅' : ''}</h2>
           <p>Learn alpha renaming by selecting which variables in a redex should be renamed to avoid variable capture.</p>
         </div>
         <div className="lesson-card" onClick={() => setCurrentLesson('normal-order')}>
-          <h2>Beta Reduction</h2>
+          <h2>Beta Reduction {hasLessonCheck('normal-order') ? '✅' : ''}</h2>
           <p>Practice beta reduction. Enter the reduced form of each expression step by step.</p>
         </div>
       </div>
