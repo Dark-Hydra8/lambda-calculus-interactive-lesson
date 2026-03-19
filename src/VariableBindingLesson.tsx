@@ -501,10 +501,15 @@ export const VariableBindingLesson: React.FC<{
         <button onClick={onBack} style={{ marginBottom: '10px' }}>← Back to Menu</button>
       </div>
       <h1>Variable Binding</h1>
-      <p style={{ marginBottom: '20px', color: '#333', whiteSpace: 'pre-line' }}>
-        Each lambda abstraction in the expression is labeled with a number (λ₁, λ₂, …).
-        For each variable, choose which lambda it is bound to from the dropdown, or "free variable" if it is not bound by any lambda.
-      </p>
+      <div style={{ marginBottom: '20px', color: '#333' }}>
+        <p style={{ marginBottom: '8px' }}><strong>How this connects to lambda calculus:</strong></p>
+        <ul style={{ margin: '0 0 0 20px', padding: 0 }}>
+          <li>Each lambda introduces a binder for its parameter (shown as λ₁, λ₂, ...).</li>
+          <li>A variable occurrence is bound by the nearest matching lambda around it.</li>
+          <li>If no matching binder exists, the variable is free.</li>
+          <li>Use the dropdown on each variable to choose its binder or "free variable".</li>
+        </ul>
+      </div>
       <p style={{ marginBottom: '16px', fontSize: '13px', color: '#666' }}>
         <em>
           Note: Information about your answers is collected.

@@ -521,10 +521,15 @@ export const BetaReductionLesson: React.FC<{
         <button onClick={onBack} style={{ marginBottom: '10px' }}>← Back to Menu</button>
       </div>
       <h1>Beta Reduction</h1>
-      <p style={{ marginBottom: '20px', color: '#333', whiteSpace: 'pre-line' }}>
-        Reduce each expression using beta reduction by substituting the argument for the parameter in the function body.
-        Drag the argument token onto candidate variable occurrences inside the function body, then press `Submit`.
-      </p>
+      <div style={{ marginBottom: '20px', color: '#333' }}>
+        <p style={{ marginBottom: '8px' }}><strong>How this connects to lambda calculus:</strong></p>
+        <ul style={{ margin: '0 0 0 20px', padding: 0 }}>
+          <li>Beta reduction uses the rule <strong>(λx.t) u → t[x := u]</strong>.</li>
+          <li>Only occurrences bound by that lambda parameter are replaced.</li>
+          <li>Drag (or click) to mark where the argument should be substituted.</li>
+          <li>Submit when your selected replacement positions are complete.</li>
+        </ul>
+      </div>
       <p style={{ marginBottom: '16px', fontSize: '13px', color: '#666' }}>
         <em>
           Note: Information about your answers is collected.

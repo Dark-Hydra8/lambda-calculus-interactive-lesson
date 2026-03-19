@@ -159,11 +159,12 @@ export const ApplicationLesson: React.FC<{
     correctApplications: ApplicationRange[];
     isCorrect: boolean;
   }>>([]);
-  const instructions =
-    'What is an application?\n\n' +
-    'In lambda calculus, an application is when one expression is applied to another, written as M N (M applied to N). So "x y" is one application (x applied to y), and "(λx.x) y" is one application (the function λx.x applied to y).\n\n' +
-    'An expression can contain multiple applications. For example, "x y z" has two applications: first "x y" (x applied to y), then that result applied to z, so the applications are "x y" and "x y z".\n\n' +
-    'Your task: Identify and highlight every application in the expression below. Select each range of text that forms one application, then confirm your selection. Submit when all applications have been highlighted.';
+  const instructionPoints = [
+    'An application has the form M N (function M applied to argument N).',
+    'Expressions can contain nested applications; for example, x y z has two applications.',
+    'Highlight one application at a time, then click Confirm Selection.',
+    'Submit after you have confirmed all applications in the expression.',
+  ];
   const textRef = useRef<HTMLDivElement>(null);
   const isProcessingRef = useRef(false);
 
@@ -648,7 +649,14 @@ export const ApplicationLesson: React.FC<{
         <button onClick={onBack} style={{ marginBottom: '10px' }}>← Back to Menu</button>
       </div>
       <h1>Identfy Useful Applications</h1>
-      <p style={{ marginBottom: '20px', color: '#000', whiteSpace: 'pre-line' }}>{instructions}</p>
+      <div style={{ marginBottom: '20px', color: '#333' }}>
+        <p style={{ marginBottom: '8px' }}><strong>How this connects to lambda calculus:</strong></p>
+        <ul style={{ margin: '0 0 0 20px', padding: 0 }}>
+          {instructionPoints.map((point, idx) => (
+            <li key={`app-inst-${idx}`} style={{ marginBottom: '4px' }}>{point}</li>
+          ))}
+        </ul>
+      </div>
       <p style={{ marginBottom: '16px', fontSize: '13px', color: '#666' }}>
         <em>
           Note: Information about your answers is collected.

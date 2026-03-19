@@ -85,7 +85,7 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
 
   const hasLessonCheck = (lessonId: LessonId): boolean => (answeredCorrectByLesson[lessonId] ?? 0) >= 4;
   const lessonCompletionMessage =
-    'Congradulations! You have finished this task! You can move onto the next one or keep going!';
+    'Congradulations! You have finished this task! You can move onto the next one or keep going! If you have finished all tasks, it would be greatly appritiated if you took the ending servey!';
   const completionMessage = (lessonId: LessonId) =>
     hasLessonCheck(lessonId) ? (
       <div className="container" style={{ marginTop: '12px' }}>
@@ -207,9 +207,16 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
       <p style={{ marginBottom: '10px', fontSize: '14px', color: '#666' }}>
         User id: <strong>{identity?.userId ?? '—'}</strong>
       </p>
-      <p style={{ marginBottom: '30px', color: '#666' }}>
-        Choose a lesson to begin learning lambda calculus:
-      </p>
+      <div style={{ marginBottom: '18px', color: '#555' }}>
+        <p style={{ marginBottom: '8px' }}><strong>Lambda calculus in one minute:</strong></p>
+        <ul style={{ margin: '0 0 0 20px', padding: 0 }}>
+          <li>Everything is built from variables, lambda abstractions, and applications.</li>
+          <li><strong>λx.t</strong> means "a function with parameter x and body t".</li>
+          <li><strong>M N</strong> means "apply function M to argument N".</li>
+          <li>Beta reduction replaces bound uses of a parameter with the argument.</li>
+        </ul>
+      </div>
+      <p style={{ marginBottom: '30px', color: '#666' }}>Choose a lesson to practice one core skill at a time:</p>
       <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'center' }}>
         <button
           onClick={() => {

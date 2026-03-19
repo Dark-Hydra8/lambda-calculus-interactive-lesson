@@ -758,10 +758,15 @@ export const RedexHighlightLesson: React.FC<{
         <button onClick={onBack} style={{ marginBottom: '10px' }}>← Back to Menu</button>
       </div>
       <h1>Highlight the Redexes</h1>
-      <p style={{ marginBottom: '20px', color: '#666' }}>
-        Select text in the expression below to highlight redexes one at a time. Each selection will identify the redex(es) it covers and add them to your confirmed highlights.
-        You can see all your previous highlights for the current question.
-      </p>
+      <div style={{ marginBottom: '20px', color: '#555' }}>
+        <p style={{ marginBottom: '8px' }}><strong>How this connects to lambda calculus:</strong></p>
+        <ul style={{ margin: '0 0 0 20px', padding: 0 }}>
+          <li>A redex is an application where the left side is a lambda: <strong>(λx.t) u</strong>.</li>
+          <li>Redexes are exactly the parts of an expression that can beta-reduce next.</li>
+          <li>Select text to detect and confirm redexes one at a time.</li>
+          <li>Submit when all redexes in the current expression are confirmed.</li>
+        </ul>
+      </div>
       <p style={{ marginBottom: '16px', fontSize: '13px', color: '#666' }}>
         <em>
           Note: Information about your answers is collected.

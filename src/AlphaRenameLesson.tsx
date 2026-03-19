@@ -685,10 +685,15 @@ export const AlphaRenameLesson: React.FC<{
         <button onClick={onBack} style={{ marginBottom: '10px' }}>← Back to Menu</button>
       </div>
       <h1>Alpha Renaming</h1>
-      <p style={{ marginBottom: '20px', color: '#666' }}>
-        The first line is the original expression (green = redex). The second line is after reducing that redex; check the variables in the reduced expression that were renamed (e.g. x became x') to avoid variable capture.
-        Variables in different positions with the same name are handled separately.
-      </p>
+      <div style={{ marginBottom: '20px', color: '#666' }}>
+        <p style={{ marginBottom: '8px' }}><strong>How this connects to lambda calculus:</strong></p>
+        <ul style={{ margin: '0 0 0 20px', padding: 0 }}>
+          <li>Alpha renaming changes bound variable names without changing meaning.</li>
+          <li>It is used during beta reduction to avoid variable capture.</li>
+          <li>Top line: original expression (green marks the redex).</li>
+          <li>Bottom line: reduced expression; select variables that were renamed.</li>
+        </ul>
+      </div>
       <p style={{ marginBottom: '16px', fontSize: '13px', color: '#666' }}>
         <em>
           Note: Information about your answers is collected.
