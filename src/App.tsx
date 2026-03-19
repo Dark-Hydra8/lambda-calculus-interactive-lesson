@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import './styles.css';
-import { NormalOrderLesson } from './NormalOrderLesson';
+import { BetaReductionLesson } from './BetaReductionLesson';
 import { RedexHighlightLesson } from './RedexHighlightLesson';
 import { AlphaRenameLesson } from './AlphaRenameLesson';
 import { ApplicationLesson } from './ApplicationLesson';
@@ -56,7 +56,7 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
 
   if (currentLesson === 'normal-order') {
     return withLayout(
-      <NormalOrderLesson
+      <BetaReductionLesson
         onBack={() => setCurrentLesson('menu')}
         onSubmit={() => recordSubmit('normal-order')}
         onAnsweredCorrect={() => recordAnswered('normal-order')}
@@ -137,8 +137,8 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
           <p>Learn alpha renaming by selecting which variables in a redex should be renamed to avoid variable capture.</p>
         </div>
         <div className="lesson-card" onClick={() => setCurrentLesson('normal-order')}>
-          <h2>Normal Order Reduction</h2>
-          <p>Practice reducing lambda expressions using normal order evaluation. Enter the reduced form of each expression step by step.</p>
+          <h2>Beta Reduction</h2>
+          <p>Practice beta reduction. Enter the reduced form of each expression step by step.</p>
         </div>
       </div>
     </div>

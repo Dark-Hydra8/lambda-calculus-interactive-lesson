@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import './styles.css';
-import { LambdaObject, Variable, Application, Lambda } from './lambda_ir';
+import { LambdaObject, Variable, Application, Lambda, norm_ord_reduce, all_variables } from './lambda_ir';
 import { Parser } from './parser';
-import { random_lambda } from './random_lambda';
+import { random_lambda, random_variable } from './random_lambda';
 import { LambdaLexerError, LambdaSyntaxError } from './lexer';
-import { renderStringWithColoredParens } from './coloredParens';
+import { PAREN_COLORS, renderStringWithColoredParens } from './coloredParens';
+import { difference } from './SetOperations';
 
 type Question = {
   question: LambdaObject;
@@ -48,21 +49,23 @@ function count_redexes(obj: LambdaObject) : number {
 }
 
 function new_question() : LambdaObject {
-  let lambda: LambdaObject;
-  let redexes = Math.floor(2 * Math.random()) + 1;
-  let vari: Variable | null = null;
-  let body: LambdaObject | null = null;
+  let param: Variable;
+  let body: LambdaObject;
+  let argument: LambdaObject;
+  let lambda: Lambda;
+  let redex: Application;
+  let has_renaming: boolean;
+  let variables = ["w", "x", "y", "z"]
   do {
-    lambda = random_lambda(["w", "x", "y", "z"], 4);
-    let norm = lambda.norm_ord_redex();
-    if (norm === null) {
-	    continue;
-    }
-    let l = norm.get_left() as Lambda;
-    vari = l.get_parameter();
-    body = l.get_body();
-  } while ((lambda.redexes().length < redexes || !(body !== null && vari !== null && has_variable(body, vari))) && String(lambda).length < 20);
-  return lambda;
+    argument = random_lambda(variables, 4);
+    body = random_lambda(variables, 4);
+    param = random_variable(variables);
+    lambda = new Lambda(param, body);
+    redex = new Application(lambda, argument);
+    let reduced = norm_ord_reduce(redex.copy()) as LambdaObject;
+    has_renaming = difference(all_variables(reduced), new Set(variables)).size > 0;
+  } while (!body.get_free_vars().has(param.get_symbol()) && !has_renaming && String(redex).length < 20);
+  return redex;
 }
 
 let questions: Question[] = [];
@@ -76,7 +79,7 @@ type SubmitResult = {
   parseErrorMessage?: string;
 };
 
-export const NormalOrderLesson: React.FC<{
+export const BetaReductionLesson: React.FC<{
   onBack: () => void;
   onSubmit?: () => void;
   onAnsweredCorrect?: () => void;
@@ -109,6 +112,141 @@ export const NormalOrderLesson: React.FC<{
       throw Error("No redex found");
     }
   }
+
+  // ---- Visual highlight for the next beta-redex: (λx.t) t' ----
+  // Blue: λx, Green: t, Red: t'
+  const LX_BG = 'rgba(30,136,229,0.18)';
+  const T_BG = 'rgba(67,160,71,0.18)';
+  const TPRIME_BG = 'rgba(229,57,53,0.18)';
+  const LX_STYLE: React.CSSProperties = { backgroundColor: LX_BG, padding: '0 2px', borderRadius: '4px', display: 'inline-block', lineHeight: '1.2' };
+  const T_STYLE: React.CSSProperties = { backgroundColor: T_BG, padding: '0 2px', borderRadius: '4px', display: 'inline-block', lineHeight: '1.2' };
+  const TPRIME_STYLE: React.CSSProperties = { backgroundColor: TPRIME_BG, padding: '0 2px', borderRadius: '4px', display: 'inline-block', lineHeight: '1.2' };
+
+  const renderExpressionWithMainRedexHighlights = (obj: LambdaObject) => {
+    const redex = obj.norm_ord_redex();
+    if (redex === null || !(redex instanceof Application)) {
+      return renderStringWithColoredParens(String(obj), { keyPrefix: 'beta-hl-fallback' });
+    }
+
+    const lambdaNode = redex.get_left();
+    if (!(lambdaNode instanceof Lambda)) {
+      return renderStringWithColoredParens(String(obj), { keyPrefix: 'beta-hl-fallback' });
+    }
+
+    const paramNode = lambdaNode.get_parameter();
+    const tNode = lambdaNode.get_body();
+    const tPrimeNode = redex.get_right();
+
+    let parenDepth = 0;
+    const renderParen = (char: '(' | ')') => {
+      if (char === '(') {
+        const color = PAREN_COLORS[parenDepth % PAREN_COLORS.length];
+        parenDepth += 1;
+        return (
+          <span key={`popen-${parenDepth}`} style={{ color }}>
+            (
+          </span>
+        );
+      }
+      parenDepth -= 1;
+      const color = PAREN_COLORS[parenDepth % PAREN_COLORS.length];
+      return (
+        <span key={`pclose-${parenDepth}`} style={{ color }}>
+          )
+        </span>
+      );
+    };
+
+    // Render a subtree without applying the special redex wrappers (used inside wrappers).
+    const renderBare = (node: LambdaObject): React.ReactNode => {
+      if (node instanceof Variable) return <span>{node.get_symbol()}</span>;
+      if (node instanceof Lambda) {
+        return (
+          <>
+            <span>λ</span>
+            {renderBare(node.get_parameter())}
+            <span>.</span>
+            {renderBare(node.get_body())}
+          </>
+        );
+      }
+      if (node instanceof Application) {
+        const leftNeedsParens = node.get_left() instanceof Lambda;
+        const rightNeedsParens =
+          node.get_right() instanceof Application ||
+          (node.get_right() instanceof Lambda &&
+            node.get_parent() instanceof Application &&
+            (node.get_parent() as Application).get_left() === node);
+
+        return (
+          <>
+            {leftNeedsParens ? renderParen('(') : null}
+            {renderBare(node.get_left())}
+            {leftNeedsParens ? renderParen(')') : null}
+            <span> </span>
+            {rightNeedsParens ? renderParen('(') : null}
+            {renderBare(node.get_right())}
+            {rightNeedsParens ? renderParen(')') : null}
+          </>
+        );
+      }
+      return null;
+    };
+
+    const renderNode = (node: LambdaObject): React.ReactNode => {
+      if (node === tNode) {
+        return <span style={T_STYLE}>{renderBare(node)}</span>;
+      }
+      if (node === tPrimeNode) {
+        return <span style={TPRIME_STYLE}>{renderBare(node)}</span>;
+      }
+      if (node === lambdaNode) {
+        return (
+          <>
+            <span style={LX_STYLE}>λ</span>
+            <span style={LX_STYLE}>{paramNode.get_symbol()}</span>
+            <span>.</span>
+            {renderNode(tNode)}
+          </>
+        );
+      }
+
+      if (node instanceof Variable) return <span>{node.get_symbol()}</span>;
+      if (node instanceof Lambda) {
+        return (
+          <>
+            <span>λ</span>
+            {renderNode(node.get_parameter())}
+            <span>.</span>
+            {renderNode(node.get_body())}
+          </>
+        );
+      }
+      if (node instanceof Application) {
+        const leftNeedsParens = node.get_left() instanceof Lambda;
+        const rightNeedsParens =
+          node.get_right() instanceof Application ||
+          (node.get_right() instanceof Lambda &&
+            node.get_parent() instanceof Application &&
+            (node.get_parent() as Application).get_left() === node);
+
+        return (
+          <>
+            {leftNeedsParens ? renderParen('(') : null}
+            {renderNode(node.get_left())}
+            {leftNeedsParens ? renderParen(')') : null}
+            <span> </span>
+            {rightNeedsParens ? renderParen('(') : null}
+            {renderNode(node.get_right())}
+            {rightNeedsParens ? renderParen(')') : null}
+          </>
+        );
+      }
+      return null;
+    };
+
+    return renderNode(obj);
+  };
 
   const handleSubmit = () => {
     onSubmit?.();
@@ -192,14 +330,12 @@ export const NormalOrderLesson: React.FC<{
     } else if (redex !== null) {
       redex.reduce();
     }
-    if (redex !== null) {
-      questions.push({
+    questions.push({
         question,
         questionStr: String(question),
         answer,
         answerStr: String(answer),
-      });
-    }
+    });
 
     if (currentIndex + 1 < questions.length) {
       setCurrentIndex(currentIndex + 1);
@@ -213,9 +349,9 @@ export const NormalOrderLesson: React.FC<{
       <div style={{ marginBottom: '20px' }}>
         <button onClick={onBack} style={{ marginBottom: '10px' }}>← Back to Menu</button>
       </div>
-      <h1>Normal Order Reduction</h1>
+      <h1>Beta Reduction</h1>
       <p style={{ marginBottom: '20px', color: '#333', whiteSpace: 'pre-line' }}>
-        Reduce each expression using normal order evaluation. Enter the result in the text box and submit.
+        Reduce each expression using beta reduction. Enter the result in the text box and submit.
       </p>
       <p style={{ marginBottom: '16px', fontSize: '13px', color: '#666' }}>
         <em>
@@ -300,7 +436,7 @@ export const NormalOrderLesson: React.FC<{
           >
             <p style={{ marginBottom: '8px', fontSize: '14px', color: '#666' }}><strong>Reduce:</strong></p>
             <div style={{ marginBottom: '12px' }}>
-              {renderStringWithColoredParens(questions[currentIndex].questionStr, { keyPrefix: 'norm' })}
+              {renderExpressionWithMainRedexHighlights(questions[currentIndex].question)}
             </div>
             <input
               type="text"
@@ -346,7 +482,7 @@ export const NormalOrderLesson: React.FC<{
         </div>
       ) : (
         <div className="question-block">
-          <p style={{ marginBottom: '12px', fontWeight: 'bold' }}>Finished resolving</p>
+          <p style={{ marginBottom: '12px' }}>Finished resolving</p>
           <div
             style={{
               padding: '20px',

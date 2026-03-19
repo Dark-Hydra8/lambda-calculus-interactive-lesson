@@ -28,7 +28,7 @@ export const InfoMenu: React.FC = () => {
       <span style={{ whiteSpace: 'nowrap' }}>M N (application)</span>
       .
       <br />
-      Reduction follows normal order: always reduce the leftmost outermost reducible expression first.
+      Reduction follows beta reduction: apply (λx.M) N by substituting N for x in M.
     </>
   );
 
