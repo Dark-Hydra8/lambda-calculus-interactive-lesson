@@ -22,6 +22,14 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
   identityLoading,
 }) => {
   const [currentLesson, setCurrentLesson] = useState<Lesson>('menu');
+  const [hasFinishedSurvey, setHasFinishedSurvey] = useState(false);
+
+  const surveyUrl = `https://docs.google.com/forms/d/e/1FAIpQLSeL7gId09NUjrUHAmzw_4Utz9gTNHHMMF-8NweXYCIbPiGbpw/viewform?usp=pp_url&entry.1056977610=${encodeURIComponent(
+    identity?.userId ?? ''
+  )}&entry.280057424=No`;
+  const endingSurveyUrl = `https://docs.google.com/forms/d/e/1FAIpQLSeL7gId09NUjrUHAmzw_4Utz9gTNHHMMF-8NweXYCIbPiGbpw/viewform?usp=pp_url&entry.1056977610=${encodeURIComponent(
+    identity?.userId ?? ''
+  )}&entry.280057424=Yes`;
 
   const recordCorrect = useCallback(
     (lessonId: LessonId) => {
@@ -109,6 +117,27 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
     );
   }
 
+  if (!hasFinishedSurvey) {
+    return withLayout(
+      <div className="container">
+        <h1>Lambda Calculus Interactive Lessons</h1>
+        <p style={{ marginBottom: '18px', color: '#666' }}>
+          Taking this before servey would be greatly appritiated!
+        </p>
+        <div style={{ marginBottom: '24px' }}>
+          <button
+            onClick={() => {
+              window.open(surveyUrl, '_blank', 'noopener,noreferrer');
+            }}
+          >
+            Take starting servey
+          </button>
+        </div>
+        <button onClick={() => setHasFinishedSurvey(true)}>Finished with servey</button>
+      </div>
+    );
+  }
+
   return withLayout(
     <div className="container">
       <h1>Lambda Calculus Interactive Lessons</h1>
@@ -118,6 +147,16 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
       <p style={{ marginBottom: '30px', color: '#666' }}>
         Choose a lesson to begin learning lambda calculus:
       </p>
+      <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'center' }}>
+        <button
+          onClick={() => {
+            window.open(endingSurveyUrl, '_blank', 'noopener,noreferrer');
+          }}
+          style={{ fontSize: '18px', padding: '12px 24px' }}
+        >
+          Take ending servey
+        </button>
+      </div>
 
       <div className="lesson-menu">
         <div className="lesson-card" onClick={() => setCurrentLesson('application')}>
