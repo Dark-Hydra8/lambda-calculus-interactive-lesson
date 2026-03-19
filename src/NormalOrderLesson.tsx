@@ -76,7 +76,12 @@ type SubmitResult = {
   parseErrorMessage?: string;
 };
 
-export const NormalOrderLesson: React.FC<{ onBack: () => void; onCorrectWithoutShowAnswer?: () => void }> = ({ onBack, onCorrectWithoutShowAnswer }) => {
+export const NormalOrderLesson: React.FC<{
+  onBack: () => void;
+  onSubmit?: () => void;
+  onAnsweredCorrect?: () => void;
+  onCorrectWithoutShowAnswer?: () => void;
+}> = ({ onBack, onSubmit, onAnsweredCorrect, onCorrectWithoutShowAnswer }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswer, setUserAnswer] = useState('');
   const [responses, setResponses] = useState<Response[]>([]);
@@ -106,6 +111,7 @@ export const NormalOrderLesson: React.FC<{ onBack: () => void; onCorrectWithoutS
   }
 
   const handleSubmit = () => {
+    onSubmit?.();
     const correctAnswer = questions[currentIndex].answer;
     const trimmed = userAnswer.trim();
     if (trimmed === '') {
@@ -141,6 +147,7 @@ export const NormalOrderLesson: React.FC<{ onBack: () => void; onCorrectWithoutS
     }
     setInputError(null);
     const isCorrect = parsedAnswer.eq(correctAnswer, null);
+    if (isCorrect) onAnsweredCorrect?.();
     if (isCorrect && !hadShownAnswerForCurrentQuestion) onCorrectWithoutShowAnswer?.();
     setSubmitResult({
       userAnswer: parsedAnswer,
@@ -212,7 +219,7 @@ export const NormalOrderLesson: React.FC<{ onBack: () => void; onCorrectWithoutS
       </p>
       <p style={{ marginBottom: '16px', fontSize: '13px', color: '#666' }}>
         <em>
-          Note: This lesson records how many questions you answer correctly (excluding ones where you click &quot;Show answer&quot;) for progress tracking.
+          Note: Information about your answers is collected.
         </em>
       </p>
 

@@ -226,7 +226,12 @@ function PreviousQuestionItem({ response, index }: { response: ResponseRecord; i
   );
 }
 
-export const VariableBindingLesson: React.FC<{ onBack: () => void; onCorrectWithoutShowAnswer?: () => void }> = ({ onBack, onCorrectWithoutShowAnswer }) => {
+export const VariableBindingLesson: React.FC<{
+  onBack: () => void;
+  onSubmit?: () => void;
+  onAnsweredCorrect?: () => void;
+  onCorrectWithoutShowAnswer?: () => void;
+}> = ({ onBack, onSubmit, onAnsweredCorrect, onCorrectWithoutShowAnswer }) => {
   const [question, setQuestion] = useState<LambdaObject>(() => newQuestion());
   const [selections, setSelections] = useState<Record<string, string>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -287,9 +292,11 @@ export const VariableBindingLesson: React.FC<{ onBack: () => void; onCorrectWith
   }, [isSubmitted, selections, occurrencesWithDropdown, correctAnswers]);
 
   const handleSubmit = () => {
+    onSubmit?.();
     const correct = occurrencesWithDropdown.every(
       occ => (selections[occ.id] || '') === correctAnswers[occ.id]
     );
+    if (correct) onAnsweredCorrect?.();
     if (correct && !hadShownAnswerForCurrentQuestion) onCorrectWithoutShowAnswer?.();
     setIsSubmitted(true);
   };
@@ -500,7 +507,7 @@ export const VariableBindingLesson: React.FC<{ onBack: () => void; onCorrectWith
       </p>
       <p style={{ marginBottom: '16px', fontSize: '13px', color: '#666' }}>
         <em>
-          Note: This lesson records how many questions you answer correctly (excluding ones where you click &quot;Show answer&quot;) for progress tracking.
+          Note: Information about your answers is collected.
         </em>
       </p>
 

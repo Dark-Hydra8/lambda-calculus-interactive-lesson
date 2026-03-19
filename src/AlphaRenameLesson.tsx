@@ -276,7 +276,12 @@ type ResponseRecord = {
   isCorrect: boolean;
 };
 
-export const AlphaRenameLesson: React.FC<{ onBack: () => void; onCorrectWithoutShowAnswer?: () => void }> = ({ onBack, onCorrectWithoutShowAnswer }) => {
+export const AlphaRenameLesson: React.FC<{
+  onBack: () => void;
+  onSubmit?: () => void;
+  onAnsweredCorrect?: () => void;
+  onCorrectWithoutShowAnswer?: () => void;
+}> = ({ onBack, onSubmit, onAnsweredCorrect, onCorrectWithoutShowAnswer }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOccurrences, setSelectedOccurrences] = useState<Set<string>>(new Set());
   const [showResult, setShowResult] = useState(false);
@@ -375,6 +380,7 @@ export const AlphaRenameLesson: React.FC<{ onBack: () => void; onCorrectWithoutS
   }, [redex, redexOccurrences]);
 
   const handleSubmit = () => {
+    onSubmit?.();
     setIsSubmitted(true);
 
     const selectedSet = new Set(selectedOccurrences);
@@ -384,6 +390,7 @@ export const AlphaRenameLesson: React.FC<{ onBack: () => void; onCorrectWithoutS
       Array.from(selectedSet).every(id => correctSet.has(id)) &&
       Array.from(correctSet).every(id => selectedSet.has(id));
 
+    if (correct) onAnsweredCorrect?.();
     if (correct && !hadShownAnswerForCurrentQuestion) onCorrectWithoutShowAnswer?.();
     setIsCorrect(correct);
   };
@@ -546,7 +553,7 @@ export const AlphaRenameLesson: React.FC<{ onBack: () => void; onCorrectWithoutS
       </p>
       <p style={{ marginBottom: '16px', fontSize: '13px', color: '#666' }}>
         <em>
-          Note: This lesson records how many questions you answer correctly (excluding ones where you click &quot;Show answer&quot;) for progress tracking.
+          Note: Information about your answers is collected.
         </em>
       </p>
 

@@ -20,6 +20,8 @@ export type LessonProgressRow = {
   user_id: string;
   lesson_id: LessonId;
   correct_without_show_answer: number;
+  submissions: number;
+  answered_correct: number;
   updated_at?: string;
 };
 

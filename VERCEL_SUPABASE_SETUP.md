@@ -19,139 +19,31 @@ This project is configured to deploy the frontend on **Vercel** and use **Supaba
 
 ### Tables and RPC (run in SQL Editor)
 
-Run the following in **Supabase → SQL Editor** to enable auth with ASURite IDs and lesson progress (correct answers without "Show answer"). Security: RLS limits all access to the current user (`auth.uid()`). The increment RPCs use only `auth.uid()` (no client-supplied user id), so users cannot modify other users’ data.
+Run the following in **Supabase → SQL Editor** to set up lesson progress using cookie-based identities (no Supabase Auth accounts).
+
+Security model:
+- The client stores `user_id` in a cookie and also stores an `auth_token` (acts like a password).
+- The RPCs require `(p_user_id, p_auth_token)` and validate that the token matches the stored profile before updating progress.
+
+You can use the repo script: `scripts/supabase-reset-schema.sql`.
 
 ```sql
--- Profiles: store ASURite ID (username) per user
-create table if not exists public.profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
-  asurite_id text not null unique,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-
-alter table public.profiles enable row level security;
-
-create policy "Users can read own profile"
-  on public.profiles for select using (auth.uid() = id);
-
-create policy "Users can insert own profile"
-  on public.profiles for insert with check (auth.uid() = id);
-
-create policy "Users can update own profile"
-  on public.profiles for update using (auth.uid() = id);
-
--- Trigger: create profile when a new auth user is created (avoids RLS error on signup)
-create or replace function public.handle_new_user()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  asurite text;
-begin
-  asurite := coalesce(nullif(trim(NEW.raw_user_meta_data->>'asurite_id'), ''), NEW.id::text);
-  insert into public.profiles (id, asurite_id)
-  values (NEW.id, asurite);
-  return NEW;
-end;
-$$;
-
-create trigger on_auth_user_created
-  after insert on auth.users
-  for each row execute function public.handle_new_user();
-
--- Lesson progress: correct answers (without "Show answer") and times completed per user per lesson
-create table if not exists public.lesson_progress (
-  user_id uuid references auth.users(id) on delete cascade not null,
-  lesson_id text not null,
-  correct_without_show_answer integer not null default 0,
-  times_completed integer not null default 0,
-  updated_at timestamptz default now(),
-  primary key (user_id, lesson_id)
-);
-
--- If table already exists without times_completed, add the column:
-alter table public.lesson_progress add column if not exists times_completed integer not null default 0;
-
-alter table public.lesson_progress enable row level security;
-
-create policy "Users can read own progress"
-  on public.lesson_progress for select using (auth.uid() = user_id);
-
-create policy "Users can insert own progress"
-  on public.lesson_progress for insert with check (auth.uid() = user_id);
-
-create policy "Users can update own progress"
-  on public.lesson_progress for update using (auth.uid() = user_id);
-
--- RPC: atomically increment correct_without_show_answer for the current user only (uses auth.uid(); client cannot supply user id)
-create or replace function public.increment_correct_without_show_answer(p_lesson_id text)
-returns void
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_user_id uuid := auth.uid();
-begin
-  if v_user_id is null then return; end if;
-  insert into lesson_progress (user_id, lesson_id, correct_without_show_answer)
-  values (v_user_id, p_lesson_id, 1)
-  on conflict (user_id, lesson_id)
-  do update set
-    correct_without_show_answer = lesson_progress.correct_without_show_answer + 1,
-    updated_at = now();
-end;
-$$;
-
--- RPC: atomically increment times_completed for the current user only (uses auth.uid())
-create or replace function public.increment_lesson_completed(p_lesson_id text)
-returns void
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_user_id uuid := auth.uid();
-begin
-  if v_user_id is null then return; end if;
-  insert into lesson_progress (user_id, lesson_id, correct_without_show_answer, times_completed)
-  values (v_user_id, p_lesson_id, 0, 1)
-  on conflict (user_id, lesson_id)
-  do update set
-    times_completed = lesson_progress.times_completed + 1,
-    updated_at = now();
-end;
-$$;
+-- See scripts/supabase-reset-schema.sql for the full schema + RPCs.
+-- Key RPCs expected by the frontend:
+--   - public.allocate_user_identity() -> jsonb { user_id, auth_token }
+--   - public.increment_correct_without_show_answer(p_user_id text, p_auth_token text, p_lesson_id text)
+--   - public.increment_submissions(p_user_id text, p_auth_token text, p_lesson_id text)
+--   - public.increment_answered_correct(p_user_id text, p_auth_token text, p_lesson_id text)
+--   - public.get_lesson_progress(p_user_id text, p_auth_token text) -> lesson_id + correct_without_show_answer + submissions + answered_correct
 ```
 
 ---
 
-## 2. Resend (custom SMTP for auth emails)
-
-Supabase’s built-in email has a low rate limit. To avoid “email rate limit exceeded” and send signup/password-reset emails through [Resend](https://resend.com):
-
-1. **Resend account and API key**
-   - Sign up at [resend.com](https://resend.com).
-   - In the dashboard: **API Keys** → create a key (e.g. “Supabase”).
-   - (Optional) **Domains** → add and verify your domain so “From” can be `noreply@yourdomain.com`. You can start with Resend’s test domain.
-
-2. **Supabase custom SMTP**
-   - In Supabase: **Project settings** (gear) → **Auth** → **SMTP Settings**.
-   - Enable **Custom SMTP** and use:
-     - **Sender email:** a verified address (e.g. `onboarding@resend.dev` for testing, or `noreply@yourdomain.com` once the domain is verified).
-     - **Sender name:** e.g. `Lambda Calculus Lessons`.
-     - **Host:** `smtp.resend.com`
-     - **Port:** `465`
-     - **Username:** `resend`
-     - **Password:** your Resend **API key** (not your Resend account password).
-   - Save. Auth emails (confirm signup, reset password, etc.) will then be sent via Resend.
-
-No code or env vars are required in this repo; configuration is only in the Supabase dashboard.
-
 ---
+
+## 2. Resend (not needed)
+
+This project no longer uses Supabase Auth email flows, so you do not need Resend or SMTP configuration for lesson progress.
 
 ## 3. Local development
 

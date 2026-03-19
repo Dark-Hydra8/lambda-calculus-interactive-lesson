@@ -131,7 +131,12 @@ type ConfirmedRedex = {
   range: SelectionRange;
 };
 
-export const RedexHighlightLesson: React.FC<{ onBack: () => void; onCorrectWithoutShowAnswer?: () => void }> = ({ onBack, onCorrectWithoutShowAnswer }) => {
+export const RedexHighlightLesson: React.FC<{
+  onBack: () => void;
+  onSubmit?: () => void;
+  onAnsweredCorrect?: () => void;
+  onCorrectWithoutShowAnswer?: () => void;
+}> = ({ onBack, onSubmit, onAnsweredCorrect, onCorrectWithoutShowAnswer }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentSelection, setCurrentSelection] = useState<SelectionRange | null>(null);
   const [confirmedRedexes, setConfirmedRedexes] = useState<ConfirmedRedex[]>([]);
@@ -357,6 +362,7 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void; onCorrectWitho
   };
 
   const handleSubmit = () => {
+    onSubmit?.();
     // Get all correct redex ranges
     const correctRanges = Array.from(redexToRangeMap.values());
     const selectedRanges = confirmedRedexes.map(cr => cr.range);
@@ -377,6 +383,7 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void; onCorrectWitho
     
     const isCorrect = allCorrectSelected && noIncorrectSelected && selectedRanges.length === correctRanges.length;
 
+    if (isCorrect) onAnsweredCorrect?.();
     if (isCorrect && !hadShownAnswerForCurrentQuestion) onCorrectWithoutShowAnswer?.();
     setIsSubmitted(true);
   };
@@ -757,7 +764,7 @@ export const RedexHighlightLesson: React.FC<{ onBack: () => void; onCorrectWitho
       </p>
       <p style={{ marginBottom: '16px', fontSize: '13px', color: '#666' }}>
         <em>
-          Note: This lesson records how many questions you answer correctly (excluding ones where you click &quot;Show answer&quot;) for progress tracking.
+          Note: Information about your answers is collected.
         </em>
       </p>
 
