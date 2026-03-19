@@ -647,7 +647,7 @@ export const ApplicationLesson: React.FC<{
       <div style={{ marginBottom: '20px' }}>
         <button onClick={onBack} style={{ marginBottom: '10px' }}>← Back to Menu</button>
       </div>
-      <h1>Identify Applications</h1>
+      <h1>Identfy Useful Applications</h1>
       <p style={{ marginBottom: '20px', color: '#000', whiteSpace: 'pre-line' }}>{instructions}</p>
       <p style={{ marginBottom: '16px', fontSize: '13px', color: '#666' }}>
         <em>

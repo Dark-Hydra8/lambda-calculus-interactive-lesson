@@ -121,7 +121,7 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
 
       <div className="lesson-menu">
         <div className="lesson-card" onClick={() => setCurrentLesson('application')}>
-          <h2>Identify Applications</h2>
+          <h2>Identfy Useful Applications</h2>
           <p>Identify and highlight every application (M applied to N, written M N) in lambda calculus expressions.</p>
         </div>
         <div className="lesson-card" onClick={() => setCurrentLesson('redex-highlight')}>
