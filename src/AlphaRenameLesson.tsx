@@ -169,6 +169,7 @@ function new_question(): Application {
     }
      */
   } while (!is_accepted(lambda));
+  lambda = new Parser("(L x. L y. x y x) y").parse_input()[0] as Application;
   return lambda;
 }
 
@@ -429,6 +430,79 @@ export const AlphaRenameLesson: React.FC<{
   const parenPairMap = useMemo(() => getParenPairMap(questionStr), [questionStr]);
   const reducedParenPairMap = useMemo(() => getParenPairMap(String(reducedExpression)), [reducedExpression]);
 
+  // --- Visual highlights for the main redex: (λx.t) t' ---
+  // Blue: λx, Green: t, Red: t'
+  const mainRedexLeftLambda = redex.get_left() instanceof Lambda ? (redex.get_left() as Lambda) : null;
+  const mainRedexParam = mainRedexLeftLambda?.get_parameter() ?? null;
+  const mainRedexBody = mainRedexLeftLambda?.get_body() ?? null;
+  const mainRedexArg = redex.get_right();
+
+  const highlightBox = (fg: string, bg: string): React.CSSProperties => ({
+    backgroundColor: bg,
+    borderRadius: '4px',
+    padding: '0 2px',
+    display: 'inline-block',
+    lineHeight: '1.2',
+  });
+
+  const collectSubtreeNodes = (root: LambdaObject | null): Set<LambdaObject> => {
+    const out = new Set<LambdaObject>();
+    const visit = (node: LambdaObject | null) => {
+      if (!node) return;
+      out.add(node);
+      if (node instanceof Lambda) {
+        visit(node.get_parameter());
+        visit(node.get_body());
+      } else if (node instanceof Application) {
+        visit(node.get_left());
+        visit(node.get_right());
+      }
+    };
+    visit(root);
+    return out;
+  };
+
+  const tNodeSet = useMemo(() => collectSubtreeNodes(mainRedexBody), [mainRedexBody]);
+  const tPrimeNodeSet = useMemo(() => collectSubtreeNodes(mainRedexArg), [mainRedexArg]);
+
+  // In the reduced expression, the new location of t' should be highlighted.
+  // We find any subtree equal to mainRedexArg (alpha-equivalent) and highlight all nodes in that subtree.
+  const tPrimeInsertedNodeSetInReduced = useMemo(() => {
+    const out = new Set<LambdaObject>();
+    const visit = (node: LambdaObject) => {
+      if (node.eq(mainRedexArg, null)) {
+        collectSubtreeNodes(node).forEach(n => out.add(n));
+        return;
+      }
+      if (node instanceof Lambda) {
+        visit(node.get_parameter());
+        visit(node.get_body());
+      } else if (node instanceof Application) {
+        visit(node.get_left());
+        visit(node.get_right());
+      }
+    };
+    visit(reducedExpression);
+    return out;
+  }, [reducedExpression, mainRedexArg]);
+
+  const LX_HL = highlightBox('#1E88E5', 'rgba(30,136,229,0.18)');
+  const T_HL = highlightBox('#43A047', 'rgba(67,160,71,0.18)');
+  const TPRIME_HL = highlightBox('#E53935', 'rgba(229,57,53,0.18)');
+
+  const getOriginalHighlightStyle = (obj: LambdaObject): React.CSSProperties | undefined => {
+    if (mainRedexParam && obj === mainRedexParam) return LX_HL;
+    if (tNodeSet.has(obj)) return T_HL;
+    if (tPrimeNodeSet.has(obj)) return TPRIME_HL;
+    return undefined;
+  };
+
+  const getReducedHighlightStyle = (obj: LambdaObject): React.CSSProperties | undefined => {
+    if (tPrimeInsertedNodeSetInReduced.has(obj)) return TPRIME_HL;
+    // Green = the t part (whole reduced expression).
+    return T_HL;
+  };
+
   const renderOriginalExpression = () => {
     const elements: React.ReactNode[] = [];
     let occurrenceIndex = 0;
@@ -436,8 +510,9 @@ export const AlphaRenameLesson: React.FC<{
     const renderRecursive = (obj: LambdaObject, path: string = ''): void => {
       if (obj instanceof Variable) {
         const occurrence = variableOccurrences.find(occ => occ.id === path);
+        const hl = getOriginalHighlightStyle(obj);
         elements.push(
-          <span key={`orig-var-${path}`} style={{ verticalAlign: 'baseline' }}>
+          <span key={`orig-var-${path}`} style={{ verticalAlign: 'baseline', ...(hl ?? {}) }}>
             {occurrence ? occurrence.symbol : obj.get_symbol()}
           </span>
         );
@@ -446,21 +521,36 @@ export const AlphaRenameLesson: React.FC<{
         const paramPath = path ? `${path}.param` : `param-${occurrenceIndex++}`;
         const bodyPath = path ? `${path}.body` : `body-${occurrenceIndex++}`;
         idx.current += 1;
-        elements.push(<span key={`orig-lam-${path}`} style={{ verticalAlign: 'baseline' }}>λ</span>);
+        const lamHl = obj === mainRedexLeftLambda ? LX_HL : getOriginalHighlightStyle(obj);
+        elements.push(<span key={`orig-lam-${path}`} style={{ verticalAlign: 'baseline', ...(lamHl ?? {}) }}>λ</span>);
         renderRecursive(obj.get_parameter(), paramPath);
         idx.current += 1;
-        elements.push(<span key={`orig-dot-${path}`} style={{ verticalAlign: 'baseline' }}>.</span>);
+        // For the main redex lambda itself, keep '.' unhighlighted to separate λx from t.
+        const dotHl = obj === mainRedexLeftLambda ? undefined : getOriginalHighlightStyle(obj);
+        elements.push(<span key={`orig-dot-${path}`} style={{ verticalAlign: 'baseline', ...(dotHl ?? {}) }}>.</span>);
         renderRecursive(obj.get_body(), bodyPath);
       } else if (obj instanceof Application) {
         const leftNeedsParens = obj.get_left() instanceof Lambda;
         const rightNeedsParens = obj.get_right() instanceof Application || (obj.get_right() instanceof Lambda && obj.get_parent() instanceof Application && (obj.get_parent() as Application).get_left() === obj);
         const leftPath = path ? `${path}.left` : `left-${occurrenceIndex++}`;
         const rightPath = path ? `${path}.right` : `right-${occurrenceIndex++}`;
+        const appHl = getOriginalHighlightStyle(obj);
         const pushParen = (key: string, char: string) => {
           const pos = idx.current++;
           const pairId = parenPairMap.get(pos);
           const color = pairId !== undefined ? PAREN_COLORS[pairId % PAREN_COLORS.length] : undefined;
-          elements.push(<span key={key} style={{ verticalAlign: 'baseline', ...(color ? { color, fontWeight: 'bold' as const } : {}) }}>{char}</span>);
+          elements.push(
+            <span
+              key={key}
+              style={{
+                verticalAlign: 'baseline',
+                ...(appHl ?? {}),
+                ...(color ? { color, fontWeight: 'bold' as const } : {}),
+              }}
+            >
+              {char}
+            </span>
+          );
         };
         if (leftNeedsParens) pushParen(`orig-lp-${path}`, '(');
         renderRecursive(obj.get_left(), leftPath);
@@ -488,37 +578,53 @@ export const AlphaRenameLesson: React.FC<{
         if (occurrence) {
           const showAsChecked = showAnswer ? reducedVariablesToRename.has(occurrence.id) : selectedOccurrences.has(occurrence.id);
           const displaySymbol = stripPrimes(occurrence.symbol);
+          const hl = getReducedHighlightStyle(obj);
           elements.push(
             <span key={`red-var-${occurrence.id}`} style={{ position: 'relative', display: 'inline-block', margin: '0 1px', verticalAlign: 'baseline', lineHeight: '1.2', paddingBottom: '20px' }}>
-              <span style={{ fontWeight: 'normal', display: 'inline-block', verticalAlign: 'baseline' }}>{displaySymbol}</span>
+              <span style={{ fontWeight: 'normal', display: 'inline-block', verticalAlign: 'baseline', ...(hl ?? {}) }}>{displaySymbol}</span>
               <label style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', bottom: '0', fontSize: '12px', cursor: isSubmitted ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', lineHeight: '1' }}>
                 <input type="checkbox" checked={showAsChecked} onChange={() => handleToggleOccurrence(occurrence.id)} disabled={isSubmitted} style={{ cursor: isSubmitted ? 'not-allowed' : 'pointer', margin: 0, verticalAlign: 'middle', width: '10px', height: '10px' }} />
               </label>
             </span>
           );
         } else {
-          elements.push(<span key={`red-fb-${path}`}>{stripPrimes(obj.get_symbol())}</span>);
+          const hl = getReducedHighlightStyle(obj);
+          elements.push(<span key={`red-fb-${path}`} style={hl}>{stripPrimes(obj.get_symbol())}</span>);
         }
         idx.current += obj.get_symbol().length;
       } else if (obj instanceof Lambda) {
         const paramPath = path ? `${path}.param` : `param-${occurrenceIndex++}`;
         const bodyPath = path ? `${path}.body` : `body-${occurrenceIndex++}`;
         idx.current += 1;
-        elements.push(<span key={`red-lam-${path}`} style={{ verticalAlign: 'baseline' }}>λ</span>);
+        const lamHl = getReducedHighlightStyle(obj);
+        elements.push(<span key={`red-lam-${path}`} style={{ verticalAlign: 'baseline', ...(lamHl ?? {}) }}>λ</span>);
         renderRecursive(obj.get_parameter(), paramPath);
         idx.current += 1;
-        elements.push(<span key={`red-dot-${path}`} style={{ verticalAlign: 'baseline' }}>.</span>);
+        const dotHl = getReducedHighlightStyle(obj);
+        elements.push(<span key={`red-dot-${path}`} style={{ verticalAlign: 'baseline', ...(dotHl ?? {}) }}>.</span>);
         renderRecursive(obj.get_body(), bodyPath);
       } else if (obj instanceof Application) {
         const leftNeedsParens = obj.get_left() instanceof Lambda;
         const rightNeedsParens = obj.get_right() instanceof Application || (obj.get_right() instanceof Lambda && obj.get_parent() instanceof Application && (obj.get_parent() as Application).get_left() === obj);
         const leftPath = path ? `${path}.left` : `left-${occurrenceIndex++}`;
         const rightPath = path ? `${path}.right` : `right-${occurrenceIndex++}`;
+        const appHl = getReducedHighlightStyle(obj);
         const pushParen = (key: string, char: string) => {
           const pos = idx.current++;
           const pairId = reducedParenPairMap.get(pos);
           const color = pairId !== undefined ? PAREN_COLORS[pairId % PAREN_COLORS.length] : undefined;
-          elements.push(<span key={key} style={{ verticalAlign: 'baseline', ...(color ? { color, fontWeight: 'bold' as const } : {}) }}>{char}</span>);
+          elements.push(
+            <span
+              key={key}
+              style={{
+                verticalAlign: 'baseline',
+                ...(appHl ?? {}),
+                ...(color ? { color, fontWeight: 'bold' as const } : {}),
+              }}
+            >
+              {char}
+            </span>
+          );
         };
         if (leftNeedsParens) pushParen(`red-lp-${path}`, '(');
         renderRecursive(obj.get_left(), leftPath);
