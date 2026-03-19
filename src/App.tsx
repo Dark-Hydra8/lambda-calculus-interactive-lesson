@@ -85,7 +85,11 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
 
   const hasLessonCheck = (lessonId: LessonId): boolean => (answeredCorrectByLesson[lessonId] ?? 0) >= 4;
   const lessonCompletionMessage =
-    'Congradulations! You have finished this task! You can move onto the next one or keep going! If you have finished all tasks, it would be greatly appritiated if you took the ending servey!';
+    (<div>
+    Congradulations! You have finished this task! <br/>
+    You can move onto the next one or keep going! <br/>
+    If you have finished all tasks, it would be greatly appritiated if you took the ending servey!
+    </div>);
   const completionMessage = (lessonId: LessonId) =>
     hasLessonCheck(lessonId) ? (
       <div className="container" style={{ marginTop: '12px' }}>

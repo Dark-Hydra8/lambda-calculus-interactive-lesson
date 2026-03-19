@@ -371,7 +371,8 @@ export const VariableBindingLesson: React.FC<{
                   disabled={isSubmitted || showAnswer}
                   style={{
                     position: 'absolute',
-                    left: 0,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
                     bottom: 0,
                     fontSize: '9px',
                     width: '24px',
