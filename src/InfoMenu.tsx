@@ -18,6 +18,20 @@ export const InfoMenu: React.FC = () => {
     return () => document.removeEventListener('click', handleClickOutside);
   }, [open]);
 
+  const infoMessage = (
+    <>
+      Lambda calculus is built from:
+      <br />
+      <span style={{ whiteSpace: 'nowrap' }}>λx.M (abstraction)</span>
+      , and
+      <br />
+      <span style={{ whiteSpace: 'nowrap' }}>M N (application)</span>
+      .
+      <br />
+      Reduction follows normal order: always reduce the leftmost outermost reducible expression first.
+    </>
+  );
+
   return (
     <>
       <div ref={menuRef} style={{ position: 'fixed', top: '16px', right: '16px', zIndex: 1000 }}>
@@ -65,13 +79,7 @@ export const InfoMenu: React.FC = () => {
                 <div style={{ padding: '10px 16px', borderBottom: '1px solid #eee' }}>
                   <div style={{ fontWeight: 700, marginBottom: '6px', color: '#000' }}>Lambda Calculus (Info)</div>
                   <div style={{ fontSize: '13px', color: '#000', lineHeight: 1.4 }}>
-                    Lambda calculus is built from:
-                    <br />
-                    <span style={{ whiteSpace: 'nowrap' }}>λx.M (abstraction)</span>
-                    , and
-                    <br />
-                    <span style={{ whiteSpace: 'nowrap' }}>M N (application)</span>
-                    . Reduction follows normal order: always reduce the leftmost outermost reducible expression first.
+                    {infoMessage}
                   </div>
                 </div>
                 <button
@@ -107,16 +115,7 @@ export const InfoMenu: React.FC = () => {
                       background: '#fafafa',
                     }}
                   >
-                    Lambda calculus is built from:
-                    <br />
-                    <span style={{ whiteSpace: 'nowrap' }}>λx.M (abstraction)</span>
-                    , and
-                    <br />
-                    <span style={{ whiteSpace: 'nowrap' }}>M N (application)</span>
-                    .
-                    <br />
-                    <br />
-                    Reduction follows normal order: always reduce the leftmost outermost reducible expression first.
+                    {infoMessage}
                   </div>
                 </div>
                 <button
