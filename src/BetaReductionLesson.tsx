@@ -1,9 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import './styles.css';
 import { LambdaObject, Variable, Application, Lambda, norm_ord_reduce, all_variables } from './lambda_ir';
-import { Parser } from './parser';
 import { random_lambda, random_variable } from './random_lambda';
-import { LambdaLexerError, LambdaSyntaxError } from './lexer';
 import { PAREN_COLORS, renderStringWithColoredParens } from './coloredParens';
 import { difference } from './SetOperations';
 
@@ -17,8 +15,7 @@ type Question = {
 type Response = {
   lambdaExpr: LambdaObject;
   lambdaExprStr: string;
-  userAnswer: LambdaObject;
-  userAnswerStr: string;
+  selectedXOccurrences: string[];
   correctAnswer: LambdaObject;
   correctAnswerStr: string;
   isCorrect: boolean;
@@ -55,7 +52,9 @@ function new_question() : LambdaObject {
   let lambda: Lambda;
   let redex: Application;
   let has_renaming: boolean;
-  let variables = ["w", "x", "y", "z"]
+  let variables = ["w", "x", "y", "z"];
+  let expected_param_count = Math.floor(3 * Math.random());
+  let param_count: number;
   do {
     argument = random_lambda(variables, 4);
     body = random_lambda(variables, 4);
@@ -64,19 +63,21 @@ function new_question() : LambdaObject {
     redex = new Application(lambda, argument);
     let reduced = norm_ord_reduce(redex.copy()) as LambdaObject;
     has_renaming = difference(all_variables(reduced), new Set(variables)).size > 0;
-  } while (!body.get_free_vars().has(param.get_symbol()) && !has_renaming && String(redex).length < 20);
+    param_count = body.get_free_vars_list().filter(v => v.get_symbol() === param.get_symbol()).length;
+  } while (
+    param_count !== expected_param_count
+    || has_renaming
+    || (String(body).length < 10 || String(body).length > 25)
+    || (String(argument).length < 3 || String(argument).length > 10)
+  );
   return redex;
 }
 
 let questions: Question[] = [];
 
 type SubmitResult = {
-  userAnswer: LambdaObject;
-  userAnswerStr: string;
-  correctAnswer: LambdaObject;
-  correctAnswerStr: string;
   isCorrect: boolean;
-  parseErrorMessage?: string;
+  selectedXOccurrences: string[];
 };
 
 export const BetaReductionLesson: React.FC<{
@@ -86,14 +87,13 @@ export const BetaReductionLesson: React.FC<{
   onCorrectWithoutShowAnswer?: () => void;
 }> = ({ onBack, onSubmit, onAnsweredCorrect, onCorrectWithoutShowAnswer }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [userAnswer, setUserAnswer] = useState('');
   const [responses, setResponses] = useState<Response[]>([]);
   const [showResult, setShowResult] = useState(false);
-  const [inputError, setInputError] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submitResult, setSubmitResult] = useState<SubmitResult | null>(null);
   const [showCorrectAnswerForCurrent, setShowCorrectAnswerForCurrent] = useState(false);
   const [hadShownAnswerForCurrentQuestion, setHadShownAnswerForCurrentQuestion] = useState(false);
+  const [selectedXOccurrences, setSelectedXOccurrences] = useState<Set<string>>(() => new Set());
 
   if (questions.length === 0) {
     let question = new_question();
@@ -248,51 +248,218 @@ export const BetaReductionLesson: React.FC<{
     return renderNode(obj);
   };
 
-  const handleSubmit = () => {
-    onSubmit?.();
-    const correctAnswer = questions[currentIndex].answer;
-    const trimmed = userAnswer.trim();
-    if (trimmed === '') {
-      setInputError(null);
-      setSubmitResult({
-        userAnswer: new Variable('_'),
-        userAnswerStr: '',
-        correctAnswer,
-        correctAnswerStr: String(correctAnswer),
-        isCorrect: false,
-      });
-      setIsSubmitted(true);
-      return;
-    }
-    let parsedAnswer: LambdaObject;
-    try {
-      parsedAnswer = (new Parser(userAnswer).parse_input() as LambdaObject[])[0];
-    } catch (error) {
-      if (error instanceof LambdaSyntaxError || error instanceof LambdaLexerError) {
-        setInputError(null);
-        setSubmitResult({
-          userAnswer: new Variable('_'),
-          userAnswerStr: '(parse error)',
-          correctAnswer,
-          correctAnswerStr: String(correctAnswer),
-          isCorrect: false,
-          parseErrorMessage: error.message,
-        });
-        setIsSubmitted(true);
+  const betaStep = useMemo(() => {
+    const current = questions[currentIndex];
+    if (!current) return null;
+    const redex = current.question.norm_ord_redex();
+    if (!redex || !(redex instanceof Application)) return null;
+    if (!(redex.get_left() instanceof Lambda)) return null;
+
+    const lambdaNode = redex.get_left() as Lambda;
+    const paramNode = lambdaNode.get_parameter();
+    const tNode = lambdaNode.get_body();
+    const tPrimeNode = redex.get_right();
+
+    const targetIds: string[] = [];
+    const collectTargets = (
+      node: LambdaObject,
+      path: string,
+      boundVars: Variable[]
+    ): void => {
+      if (node instanceof Variable) {
+        const nearestBinder =
+          [...boundVars].reverse().find(v => v.get_symbol() === node.get_symbol()) || null;
+        if (nearestBinder === paramNode) {
+          targetIds.push(path);
+        }
         return;
       }
-      throw error;
-    }
-    setInputError(null);
-    const isCorrect = parsedAnswer.eq(correctAnswer, null);
+
+      if (node instanceof Lambda) {
+        // Do not treat the binder parameter itself as a “variable occurrence” to replace.
+        const innerParam = node.get_parameter();
+        collectTargets(node.get_body(), `${path}.body`, [...boundVars, innerParam]);
+        return;
+      }
+
+      if (node instanceof Application) {
+        collectTargets(node.get_left(), `${path}.left`, boundVars);
+        collectTargets(node.get_right(), `${path}.right`, boundVars);
+        return;
+      }
+    };
+
+    collectTargets(tNode, 't', [paramNode]);
+
+    return {
+      redex,
+      lambdaNode,
+      paramNode,
+      tNode,
+      tPrimeNode,
+      targetIds,
+    };
+  }, [currentIndex]);
+
+  const targetIdsSet = useMemo(() => new Set(betaStep?.targetIds ?? []), [betaStep]);
+
+  const handleDropOnXOccurrence = (occId: string) => {
+    if (isSubmitted) return;
+    setSelectedXOccurrences(prev => {
+      const next = new Set(prev);
+      next.add(occId);
+      return next;
+    });
+  };
+
+  const toggleXOccurrence = (occId: string) => {
+    if (isSubmitted) return;
+    setSelectedXOccurrences(prev => {
+      const next = new Set(prev);
+      if (next.has(occId)) next.delete(occId);
+      else next.add(occId);
+      return next;
+    });
+  };
+
+  const renderTWithDropTargets = (
+    selectedSet: Set<string> = selectedXOccurrences,
+    interactive: boolean = true
+  ) => {
+    if (!betaStep) return null;
+
+    const { tNode } = betaStep;
+
+    let parenDepth = 0;
+    let parenKey = 0;
+    const renderParen = (char: '(' | ')') => {
+      if (char === '(') {
+        const color = PAREN_COLORS[parenDepth % PAREN_COLORS.length];
+        parenDepth += 1;
+        parenKey += 1;
+        return (
+          <span key={`beta-paren-${parenKey}`} style={{ color, fontWeight: 'bold' }}>
+            (
+          </span>
+        );
+      }
+      parenDepth -= 1;
+      const color = PAREN_COLORS[parenDepth % PAREN_COLORS.length];
+      parenKey += 1;
+      return (
+        <span key={`beta-paren-${parenKey}`} style={{ color, fontWeight: 'bold' }}>
+          )
+        </span>
+      );
+    };
+
+    const renderNode = (node: LambdaObject, path: string, boundVars: Variable[]): React.ReactNode => {
+      if (node instanceof Variable) {
+        // Every variable occurrence in t is a candidate drop target.
+        // Lambda parameters are excluded because we never recurse into parameter nodes.
+        const isTarget = true;
+        const selected = selectedSet.has(path);
+
+        if (!isTarget) {
+          return <span key={`beta-var-${path}`}>{node.get_symbol()}</span>;
+        }
+
+        const targetStyle: React.CSSProperties = selected
+          ? { backgroundColor: 'rgba(30,136,229,0.18)', borderRadius: 4, padding: '0 2px', display: 'inline-block' }
+          : {
+              border: '1px dashed rgba(30,136,229,0.4)',
+              borderRadius: 4,
+              padding: '0 2px',
+              display: 'inline-block',
+              cursor: interactive ? 'copy' : 'default',
+            };
+
+        const replacementText = renderStringWithColoredParens(
+          String(betaStep.tPrimeNode),
+          { keyPrefix: `beta-inline-repl-${path}` }
+        );
+
+        return (
+          <span
+            key={`beta-var-${path}`}
+            style={targetStyle}
+            onDragOver={(e) => {
+              if (isSubmitted || !interactive) return;
+              e.preventDefault();
+            }}
+            onDrop={(e) => {
+              if (!interactive) return;
+              e.preventDefault();
+              handleDropOnXOccurrence(path);
+            }}
+            onClick={() => {
+              if (!interactive) return;
+              toggleXOccurrence(path);
+            }}
+            title={selected ? "Marked: will substitute t' here" : "Drop t' here"}
+          >
+            {selected ? replacementText : node.get_symbol()}
+          </span>
+        );
+      }
+
+      if (node instanceof Lambda) {
+        const innerParam = node.get_parameter();
+        return (
+          <span key={`beta-lam-${path}`}>
+            <span>λ</span>
+            {/* Binder parameter itself is not a substitution target */}
+            <span>{innerParam.get_symbol()}</span>
+            <span>.</span>
+            {renderNode(node.get_body(), `${path}.body`, [...boundVars, innerParam])}
+          </span>
+        );
+      }
+
+      if (node instanceof Application) {
+        const leftNeedsParens = node.get_left() instanceof Lambda;
+        const rightNeedsParens =
+          node.get_right() instanceof Application ||
+          (node.get_right() instanceof Lambda &&
+            node.get_parent() instanceof Application &&
+            (node.get_parent() as Application).get_left() === node);
+
+        const left = renderNode(node.get_left(), `${path}.left`, boundVars);
+        const right = renderNode(node.get_right(), `${path}.right`, boundVars);
+
+        return (
+          <span key={`beta-app-${path}`}>
+            {leftNeedsParens ? renderParen('(') : null}
+            {left}
+            {leftNeedsParens ? renderParen(')') : null}
+            <span> </span>
+            {rightNeedsParens ? renderParen('(') : null}
+            {right}
+            {rightNeedsParens ? renderParen(')') : null}
+          </span>
+        );
+      }
+
+      return null;
+    };
+
+    return renderNode(tNode, 't', []);
+  };
+
+  const handleSubmit = () => {
+    onSubmit?.();
+    if (!betaStep) return;
+
+    const isCorrect =
+      selectedXOccurrences.size === targetIdsSet.size &&
+      Array.from(selectedXOccurrences).every(id => targetIdsSet.has(id));
+
     if (isCorrect) onAnsweredCorrect?.();
     if (isCorrect && !hadShownAnswerForCurrentQuestion) onCorrectWithoutShowAnswer?.();
+
     setSubmitResult({
-      userAnswer: parsedAnswer,
-      userAnswerStr: String(parsedAnswer),
-      correctAnswer,
-      correctAnswerStr: String(correctAnswer),
       isCorrect,
+      selectedXOccurrences: Array.from(selectedXOccurrences),
     });
     setIsSubmitted(true);
   };
@@ -303,24 +470,28 @@ export const BetaReductionLesson: React.FC<{
     setShowCorrectAnswerForCurrent(false);
   };
 
+  const handleResetReplacements = () => {
+    if (isSubmitted) return;
+    setSelectedXOccurrences(new Set());
+  };
+
   const handleNext = () => {
     if (submitResult === null) return;
     const current = questions[currentIndex];
     const newResponse: Response = {
       lambdaExpr: current.question,
       lambdaExprStr: current.questionStr,
-      userAnswer: submitResult.userAnswer,
-      userAnswerStr: submitResult.parseErrorMessage ?? submitResult.userAnswerStr,
-      correctAnswer: submitResult.correctAnswer,
-      correctAnswerStr: submitResult.correctAnswerStr,
+      selectedXOccurrences: submitResult.selectedXOccurrences,
+      correctAnswer: current.answer,
+      correctAnswerStr: current.answerStr,
       isCorrect: submitResult.isCorrect,
     };
     setResponses([...responses, newResponse]);
     setSubmitResult(null);
     setIsSubmitted(false);
-    setUserAnswer('');
     setShowCorrectAnswerForCurrent(false);
     setHadShownAnswerForCurrentQuestion(false);
+    setSelectedXOccurrences(new Set());
 
     const question = new_question();
     let answer = question.copy();
@@ -351,7 +522,8 @@ export const BetaReductionLesson: React.FC<{
       </div>
       <h1>Beta Reduction</h1>
       <p style={{ marginBottom: '20px', color: '#333', whiteSpace: 'pre-line' }}>
-        Reduce each expression using beta reduction. Enter the result in the text box and submit.
+        Reduce each expression using beta reduction by substituting the argument for the parameter in the function body.
+        Drag the argument token onto candidate variable occurrences inside the function body, then press `Submit`.
       </p>
       <p style={{ marginBottom: '16px', fontSize: '13px', color: '#666' }}>
         <em>
@@ -397,11 +569,6 @@ export const BetaReductionLesson: React.FC<{
                 {res.isCorrect && renderStringWithColoredParens(res.correctAnswerStr, { keyPrefix: `norm-prev-ans-${idx}` })}
                 {!res.isCorrect && (
                   <>
-                    {res.userAnswerStr === '' ? (
-                      <em>No answer given</em>
-                    ) : (
-                      renderStringWithColoredParens(res.userAnswerStr, { keyPrefix: `norm-prev-user-${idx}` })
-                    )}
                     <p style={{ marginTop: '8px', marginBottom: 0, fontSize: '14px', fontFamily: 'inherit' }}>Correct answer:</p>
                     {renderStringWithColoredParens(res.correctAnswerStr, { keyPrefix: `norm-prev-correct-${idx}` })}
                   </>
@@ -438,35 +605,81 @@ export const BetaReductionLesson: React.FC<{
             <div style={{ marginBottom: '12px' }}>
               {renderExpressionWithMainRedexHighlights(questions[currentIndex].question)}
             </div>
-            <input
-              type="text"
-              value={userAnswer}
-              onChange={(e) => setUserAnswer(e.target.value)}
-              placeholder="Reduced expression"
-              disabled={isSubmitted}
-              style={{ width: '100%', padding: '8px 12px', fontSize: '16px', fontFamily: 'monospace', boxSizing: 'border-box' }}
-            />
-            {inputError && <p className="error-message" style={{ marginTop: '8px', marginBottom: 0 }}>{inputError}</p>}
+
+            <div style={{ marginBottom: '12px' }}>
+              <p style={{ marginBottom: '4px', fontSize: '14px', color: '#666' }}><strong>Function body (drag argument onto variable candidates):</strong></p>
+              <div
+                style={{
+                  padding: '10px 12px',
+                  background: '#fff',
+                  border: '1px solid #eee',
+                  borderRadius: '8px',
+                  wordBreak: 'break-word',
+                }}
+              >
+                {renderTWithDropTargets()}
+              </div>
+            </div>
+
+            {betaStep && (
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <div>
+                  <p style={{ marginBottom: '4px', fontSize: '14px', color: '#666' }}><strong>Argument:</strong></p>
+                  <div
+                    draggable={!isSubmitted}
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('text/plain', 'beta-tprime');
+                    }}
+                    style={{
+                      padding: '8px 12px',
+                      border: '2px solid rgba(229,57,53,0.25)',
+                      background: 'rgba(229,57,53,0.08)',
+                      borderRadius: '8px',
+                      cursor: isSubmitted ? 'not-allowed' : 'grab',
+                      maxWidth: '360px',
+                      overflowWrap: 'anywhere',
+                    }}
+                  >
+                    {renderStringWithColoredParens(String(betaStep.tPrimeNode), { keyPrefix: 'beta-tprime-token' })}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
+
           {isSubmitted && submitResult !== null && (
             <p style={{ marginBottom: '12px' }}>
               {submitResult.isCorrect ? (
                 <span className="correct">✓ Correct.</span>
-              ) : submitResult.parseErrorMessage ? (
-                <span className="incorrect">✗ {submitResult.parseErrorMessage}</span>
               ) : (
                 <span className="incorrect">✗ Incorrect.</span>
               )}
             </p>
           )}
+
           {isSubmitted && submitResult !== null && !submitResult.isCorrect && showCorrectAnswerForCurrent && (
             <div style={{ marginBottom: '12px', fontSize: '18px', fontFamily: 'monospace', lineHeight: '2' }}>
-              <p style={{ marginBottom: '4px', fontSize: '14px', color: '#666' }}><strong>Correct answer:</strong></p>
-              {renderStringWithColoredParens(submitResult.correctAnswerStr, { keyPrefix: 'norm-current-correct' })}
+              <p style={{ marginBottom: '4px', fontSize: '14px', color: '#666' }}>
+                <strong>Correct substitutions in function body:</strong>
+              </p>
+              <div
+                style={{
+                  padding: '10px 12px',
+                  background: '#fff',
+                  border: '1px solid #eee',
+                  borderRadius: '8px',
+                  wordBreak: 'break-word',
+                }}
+              >
+                {renderTWithDropTargets(targetIdsSet, false)}
+              </div>
             </div>
           )}
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <button onClick={handleSubmit} disabled={isSubmitted}>Submit</button>
+            <button onClick={handleResetReplacements} disabled={isSubmitted || selectedXOccurrences.size === 0}>
+              Reset Replacements
+            </button>
             {isSubmitted && submitResult !== null && (
               <>
                 {!submitResult.isCorrect && (
