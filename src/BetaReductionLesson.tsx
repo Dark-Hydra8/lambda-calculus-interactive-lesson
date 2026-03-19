@@ -302,6 +302,11 @@ export const BetaReductionLesson: React.FC<{
   }, [currentIndex]);
 
   const targetIdsSet = useMemo(() => new Set(betaStep?.targetIds ?? []), [betaStep]);
+  const functionBodyIndentCh = useMemo(() => {
+    if (!betaStep) return 0;
+    // Align with the start of t in (λx.t) by accounting for "(λ", parameter, and ".".
+    return betaStep.paramNode.get_symbol().length + 3;
+  }, [betaStep]);
 
   const handleDropOnXOccurrence = (occId: string) => {
     if (isSubmitted) return;
@@ -353,7 +358,12 @@ export const BetaReductionLesson: React.FC<{
       );
     };
 
-    const renderNode = (node: LambdaObject, path: string, boundVars: Variable[]): React.ReactNode => {
+    const renderNode = (
+      node: LambdaObject,
+      path: string,
+      boundVars: Variable[],
+      appSide: 'left' | 'right' | null
+    ): React.ReactNode => {
       if (node instanceof Variable) {
         // Every variable occurrence in t is a candidate drop target.
         // Lambda parameters are excluded because we never recurse into parameter nodes.
@@ -374,10 +384,24 @@ export const BetaReductionLesson: React.FC<{
               cursor: interactive ? 'copy' : 'default',
             };
 
-        const replacementText = renderStringWithColoredParens(
+        const replacementNeedsParens =
+          appSide === 'right'
+            ? betaStep.tPrimeNode instanceof Application || betaStep.tPrimeNode instanceof Lambda
+            : appSide === 'left'
+              ? betaStep.tPrimeNode instanceof Lambda
+              : false;
+
+        const replacementInner = renderStringWithColoredParens(
           String(betaStep.tPrimeNode),
           { keyPrefix: `beta-inline-repl-${path}` }
         );
+        const replacementText = replacementNeedsParens ? (
+          <>
+            <span style={{ color: '#000' }}>(</span>
+            {replacementInner}
+            <span style={{ color: '#000' }}>)</span>
+          </>
+        ) : replacementInner;
 
         return (
           <span
@@ -411,7 +435,7 @@ export const BetaReductionLesson: React.FC<{
             {/* Binder parameter itself is not a substitution target */}
             <span>{innerParam.get_symbol()}</span>
             <span>.</span>
-            {renderNode(node.get_body(), `${path}.body`, [...boundVars, innerParam])}
+            {renderNode(node.get_body(), `${path}.body`, [...boundVars, innerParam], null)}
           </span>
         );
       }
@@ -424,8 +448,8 @@ export const BetaReductionLesson: React.FC<{
             node.get_parent() instanceof Application &&
             (node.get_parent() as Application).get_left() === node);
 
-        const left = renderNode(node.get_left(), `${path}.left`, boundVars);
-        const right = renderNode(node.get_right(), `${path}.right`, boundVars);
+        const left = renderNode(node.get_left(), `${path}.left`, boundVars, 'left');
+        const right = renderNode(node.get_right(), `${path}.right`, boundVars, 'right');
 
         return (
           <span key={`beta-app-${path}`}>
@@ -443,7 +467,7 @@ export const BetaReductionLesson: React.FC<{
       return null;
     };
 
-    return renderNode(tNode, 't', []);
+    return renderNode(tNode, 't', [], null);
   };
 
   const handleSubmit = () => {
@@ -622,7 +646,9 @@ export const BetaReductionLesson: React.FC<{
                   wordBreak: 'break-word',
                 }}
               >
-                {renderTWithDropTargets()}
+                <div style={{ marginLeft: `${functionBodyIndentCh}ch` }}>
+                  {renderTWithDropTargets()}
+                </div>
               </div>
             </div>
 
@@ -676,7 +702,9 @@ export const BetaReductionLesson: React.FC<{
                   wordBreak: 'break-word',
                 }}
               >
-                {renderTWithDropTargets(targetIdsSet, false)}
+                <div style={{ marginLeft: `${functionBodyIndentCh}ch` }}>
+                  {renderTWithDropTargets(targetIdsSet, false)}
+                </div>
               </div>
             </div>
           )}
