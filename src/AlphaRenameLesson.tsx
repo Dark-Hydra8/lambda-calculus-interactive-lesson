@@ -161,15 +161,7 @@ function new_question(): Application {
       ),
       random_with_unique_lambdas([...base_vars], 7)
     );
-    /* 
-    console.log("i", i);
-    if (i++ >= 100_000) {
-      lambda = new Parser("(L x. x) x").parse_input()[0] as Application;
-      break;
-    }
-     */
   } while (!is_accepted(lambda));
-  lambda = new Parser("(L x. L y. x y x) y").parse_input()[0] as Application;
   return lambda;
 }
 
@@ -185,7 +177,10 @@ function findVariableOccurrences(
   if (obj instanceof Variable) {
     const isInRedex = isInRedexSubtree(obj, redex);
     const isBound = boundVars.some(v => v.get_symbol() === obj.get_symbol());
-    const isBoundBy = boundVars.find(v => v.get_symbol() === obj.get_symbol()) || null;
+    // Choose the nearest binder (shadowing-aware).
+    // `boundVars` is built by pushing lambda parameters as we descend,
+    // so the last matching symbol binds the occurrence.
+    const isBoundBy = [...boundVars].reverse().find(v => v.get_symbol() === obj.get_symbol()) || null;
     
     // Use a unique ID that includes the path and a counter to ensure uniqueness
     const uniqueId = path || `var-${occurrenceCounter.count++}`;
@@ -343,11 +338,36 @@ export const AlphaRenameLesson: React.FC<{
     return occurrences;
   }, [reducedExpression]);
 
-  // In the reduced expression, variables that were renamed have ' in their symbol
-  const reducedVariablesToRename = useMemo(
-    () => new Set(reducedVariableOccurrences.filter(occ => /'/.test(occ.symbol)).map(occ => occ.id)),
-    [reducedVariableOccurrences]
-  );
+  // Map lambda parameter nodes (Variable objects) to their parameter-occurrence IDs.
+  const paramVarToParamId = useMemo(() => {
+    const map = new Map<Variable, string>();
+    for (const occ of reducedVariableOccurrences) {
+      const isParamOcc = occ.id.startsWith('param-') || occ.id.endsWith('.param');
+      if (isParamOcc) {
+        map.set(occ.variable as Variable, occ.id);
+      }
+    }
+    return map;
+  }, [reducedVariableOccurrences]);
+
+  const binderKeyForOccurrence = (occ: VariableOccurrence): string => {
+    const isParamOcc = occ.id.startsWith('param-') || occ.id.endsWith('.param');
+    if (isParamOcc) return occ.id;
+    if (occ.isBoundBy) return paramVarToParamId.get(occ.isBoundBy) ?? occ.id;
+    return occ.id;
+  };
+
+  // In the reduced expression, variables that were renamed have ' in their symbol.
+  // Convert that into "binder keys" so all occurrences bound to the same λ share state.
+  const reducedVariablesToRename = useMemo(() => {
+    const correctBinderKeys = new Set<string>();
+    for (const occ of reducedVariableOccurrences) {
+      if (/'/.test(occ.symbol)) {
+        correctBinderKeys.add(binderKeyForOccurrence(occ));
+      }
+    }
+    return correctBinderKeys;
+  }, [reducedVariableOccurrences, paramVarToParamId]);
 
   // Determine which variables should be renamed in original (kept for redexOccurrences / display logic)
   const variablesToRename = useMemo(() => {
@@ -511,8 +531,12 @@ export const AlphaRenameLesson: React.FC<{
       if (obj instanceof Variable) {
         const occurrence = variableOccurrences.find(occ => occ.id === path);
         const hl = getOriginalHighlightStyle(obj);
+        // Additional cue: any variable occurrence bound by the redex's λ-parameter
+        // (i.e. occurrences where the binder is exactly that parameter node) is highlighted in blue.
+        const boundByRedexLambdaParam = mainRedexParam !== null && occurrence?.isBoundBy === mainRedexParam;
+        const boundBlue = boundByRedexLambdaParam ? LX_HL : undefined;
         elements.push(
-          <span key={`orig-var-${path}`} style={{ verticalAlign: 'baseline', ...(hl ?? {}) }}>
+          <span key={`orig-var-${path}`} style={{ verticalAlign: 'baseline', ...(hl ?? {}), ...(boundBlue ?? {}) }}>
             {occurrence ? occurrence.symbol : obj.get_symbol()}
           </span>
         );
@@ -576,14 +600,22 @@ export const AlphaRenameLesson: React.FC<{
         const lookupId = path || `var-${varCounter++}`;
         const occurrence = reducedVariableOccurrences.find(occ => occ.id === lookupId);
         if (occurrence) {
-          const showAsChecked = showAnswer ? reducedVariablesToRename.has(occurrence.id) : selectedOccurrences.has(occurrence.id);
+          const binderKey = binderKeyForOccurrence(occurrence);
+          const showAsChecked = showAnswer ? reducedVariablesToRename.has(binderKey) : selectedOccurrences.has(binderKey);
           const displaySymbol = stripPrimes(occurrence.symbol);
           const hl = getReducedHighlightStyle(obj);
+
           elements.push(
             <span key={`red-var-${occurrence.id}`} style={{ position: 'relative', display: 'inline-block', margin: '0 1px', verticalAlign: 'baseline', lineHeight: '1.2', paddingBottom: '20px' }}>
               <span style={{ fontWeight: 'normal', display: 'inline-block', verticalAlign: 'baseline', ...(hl ?? {}) }}>{displaySymbol}</span>
               <label style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', bottom: '0', fontSize: '12px', cursor: isSubmitted ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', lineHeight: '1' }}>
-                <input type="checkbox" checked={showAsChecked} onChange={() => handleToggleOccurrence(occurrence.id)} disabled={isSubmitted} style={{ cursor: isSubmitted ? 'not-allowed' : 'pointer', margin: 0, verticalAlign: 'middle', width: '10px', height: '10px' }} />
+                <input
+                  type="checkbox"
+                  checked={showAsChecked}
+                  onChange={() => handleToggleOccurrence(binderKey)}
+                  disabled={isSubmitted}
+                  style={{ cursor: isSubmitted ? 'not-allowed' : 'pointer', margin: 0, verticalAlign: 'middle', width: '10px', height: '10px' }}
+                />
               </label>
             </span>
           );
@@ -708,7 +740,7 @@ export const AlphaRenameLesson: React.FC<{
           
           <div style={{ marginBottom: '20px' }}>
             <p>
-              <strong>Selected variables:</strong> {selectedOccurrences.size}
+              <strong>Selected lambdas:</strong> {selectedOccurrences.size}
             </p>
             {isSubmitted && isCorrect !== null && (
               <p style={{ marginTop: '10px' }}>
