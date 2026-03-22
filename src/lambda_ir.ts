@@ -4,6 +4,15 @@ export function set_debug(value: boolean) : void {
 	debug = value;
 }
 
+export class IndexRange {
+	// Inclusive start, exclusive end
+	public constructor(public start: number, public end: number) {}
+
+	public toString() : string {
+		return `[${this.start}, ${this.end})`;
+	}
+}
+
 function sets_eq<T>(set1: Set<T>, set2: Set<T>): boolean {
 	if (set1.size !== set2.size) {
 		return false;
@@ -187,6 +196,8 @@ export abstract class LambdaObject {
 	public abstract repr() : string;
 	public abstract get_free_vars_list() : Variable[];
 	public abstract refresh_free_vars() : void;
+	public abstract alpha_rename(variable: Variable, param_free_vars: Set<string>) : void;
+	public abstract object_ranges() : [IndexRange, LambdaObject][]; // Does not include spaces
 }
 
 export abstract class LambdaTree extends LambdaObject {
@@ -194,8 +205,6 @@ export abstract class LambdaTree extends LambdaObject {
 	protected right: LambdaObject;
 	
 	public constructor(left: LambdaObject, right: LambdaObject) {
-		// console.log(`left ${left}`);
-		// console.log(`right ${right}`);
 		let free_vars = new Set([...left.get_free_vars(), ...right.get_free_vars()]);
 		super(free_vars);
 		this.left = left;
@@ -217,6 +226,16 @@ export abstract class LambdaTree extends LambdaObject {
 		}
 		this.left.set_parent(this);
 		this.right.set_parent(this);
+		this.reload_free_vars();
+	}
+
+	public alpha_rename(variable: Variable, param_free_vars: Set<string>) : void {
+		if (this.right.get_free_vars().has(variable.get_symbol())) {
+			this.right.alpha_rename(variable, param_free_vars);
+		}
+		if (this.left.get_free_vars().has(variable.get_symbol())) {
+			this.left.alpha_rename(variable, param_free_vars);
+		}
 		this.reload_free_vars();
 	}
 	
@@ -280,6 +299,7 @@ export class Lambda extends LambdaTree {
 	public replace(variable: Variable, replacement: LambdaObject) : void {
 		if (!variable.eq(this.left, null) && this.get_free_vars().has(variable.get_symbol())) {
 			let parameter = (this.left as Variable).get_symbol();
+			// alpha renaming
 			if (replacement.get_free_vars().has(parameter)) {
 				let new_parameter = parameter;
 				do {
@@ -293,6 +313,26 @@ export class Lambda extends LambdaTree {
 				this.reload_free_vars();
 			}
 			super.replace(variable, replacement);
+		}
+	}
+
+	public alpha_rename(variable: Variable, param_free_vars: Set<string>) : void {
+		if (!variable.eq(this.left, null) && this.get_free_vars().has(variable.get_symbol())) {
+			let parameter = (this.left as Variable).get_symbol();
+			// alpha renaming
+			if (param_free_vars.has(parameter)) {
+				let new_parameter = parameter;
+				do {
+					new_parameter = `${new_parameter}'`;
+				} while (param_free_vars.has(new_parameter));
+				let old_variable = this.left as Variable;
+				let new_variable = new Variable(new_parameter);
+				this.left = new_variable;
+				new_variable.set_parent(this);
+				this.right.replace(old_variable, new_variable);
+				this.reload_free_vars();
+			}
+			super.alpha_rename(variable, param_free_vars);
 		}
 	}
 
@@ -312,12 +352,36 @@ export class Lambda extends LambdaTree {
 	}
 
 	public redex_ranges() : Range[] {
-		let start = String(this.left).replace(/\s/g, '').length + 2;
-		let redexes: Range[] = [];
-		for (let redex of this.right.redex_ranges()) {
+		const body = this.get_body();
+		const start =
+			String(this).replace(/\s/g, '').length - String(body).replace(/\s/g, '').length;
+		const redexes: Range[] = [];
+		for (let redex of body.redex_ranges()) {
 			redexes.push(new Range(redex.start + start, redex.end + start));
 		}
 		return redexes;
+	}
+
+	public object_ranges() : [IndexRange, LambdaObject][] {
+		let left_ranges = this.left.object_ranges();
+		let right_ranges = this.right.object_ranges();
+		let left_max_end = 0;
+		let max_end = 0;
+		for (let [range, _] of left_ranges) {
+			range.start += 1; // +1 for the lambda
+			range.end += 1;
+			left_max_end = Math.max(left_max_end, range.end);
+		}
+		for (let [range, _] of right_ranges) {
+			range.start += left_max_end + 1; // +1 for the space
+			range.end += left_max_end + 1;
+			max_end = Math.max(max_end, range.end);
+		}
+		let this_range = new IndexRange(0, max_end);
+		if (debug) {
+			console.log(`this: ${this} range: ${this_range}`);
+		}
+		return [[this_range, this], ...left_ranges, ...right_ranges];
 	}
 
 	public toString() : string {
@@ -338,9 +402,6 @@ export class Lambda extends LambdaTree {
 	}
 
 	public eq(other: LambdaObject, var_mapping: VariableMapping | null) : boolean {
-		if (debug) {
-			console.log(`this: ${this} other: ${other}`);
-		}
 		if (!(other instanceof Lambda)) {
 			return false;
 		}
@@ -395,9 +456,7 @@ export class Application extends LambdaTree {
 		if (!(this.left instanceof Lambda)) {
 			throw new Error("Attempted to reduce a non redux");
 		}
-		// console.log(`Old body ${this.left}`);
 		let t_prime = this.left.call(this.right);
-		// console.log(`new body ${t_prime}`);
 		if (this.parent !== null) {
 			this.parent.replace_child(this, t_prime);
 			this.parent.reload_free_vars();
@@ -415,37 +474,15 @@ export class Application extends LambdaTree {
 	}
 
 	public redex_ranges() : Range[] {
-		let start;
-		if (this.left instanceof Lambda) {
-			start = 1;
-		} else {
-			start = 0;
+		const pairs = this.object_ranges();
+		const result: Range[] = [];
+		for (const redex of this.redexes()) {
+			const found = pairs.find(([, obj]) => obj === redex);
+			if (found) {
+				result.push(new Range(found[0].start, found[0].end));
+			}
 		}
-		let redexes = [];
-		for (let redex of this.left.redex_ranges()) {
-			redexes.push(new Range(redex.start + start, redex.end + start));
-		}
-
-		if (this.left instanceof Lambda) {
-			redexes.push(new Range(0, String(this).replace(/\s/g, '').length));
-		}
-
-		let left = String(this.left).replace(/\s/g, '').length;
-		if (this.left instanceof Lambda) {
-			start += left + 1;
-		} else {
-			start += left;
-		}
-
-		if (this.right instanceof Application
-		    || (this.right instanceof Lambda && this.parent instanceof Application && this.parent.left === this)) {
-			start++;
-		}
-
-		for (let redex of this.right.redex_ranges()) {
-			redexes.push(new Range(redex.start + start, redex.end + start));
-		}
-		return redexes;
+		return result;
 	}
 
 	public norm_ord_redex() : Application | null {
@@ -465,8 +502,14 @@ export class Application extends LambdaTree {
 		}
 
 		let right;
-		if (this.right instanceof Application
-		    || (this.right instanceof Lambda && this.parent instanceof Application && this.parent.left === this)) {
+		if (
+			this.right instanceof Application
+		    || (
+				this.right instanceof Lambda
+				&& this.parent instanceof Application
+				&& this.parent.left === this
+			)
+		) {
 			right = `(${this.right})`;
 		} else {
 			right = String(this.right);
@@ -476,6 +519,56 @@ export class Application extends LambdaTree {
 
 	public repr() : string {
 		return `(${this.left.repr()} ${this.right.repr()})`;
+	}
+
+	public object_ranges() : [IndexRange, LambdaObject][] {
+		let left_ranges = this.left.object_ranges();
+		let right_ranges = this.right.object_ranges();
+		let has_left_parans = this.left instanceof Lambda;
+		let has_right_parans = this.right instanceof Application
+		|| (
+			this.right instanceof Lambda
+			&& this.parent instanceof Application
+			&& this.parent.left === this
+		);
+
+		let left_start;
+		if (has_left_parans) {
+			left_start = 1; // +1 for (
+		} else {
+			left_start = 0;
+		}
+
+		let left_max_end = 0;
+		for (let [range, _] of left_ranges) {
+			range.start += left_start; // +1 for the lambda
+			range.end += left_start;
+			left_max_end = Math.max(left_max_end, range.end);
+		}
+
+		let right_start = left_max_end;
+		if (has_left_parans) {
+			right_start++; // +1 for )
+		}
+		if (has_right_parans) {
+			right_start++; // +1 for (
+		}
+
+		let max_end = 0;
+		for (let [range, _] of right_ranges) {
+			range.start += right_start;
+			range.end += right_start;
+			max_end = Math.max(max_end, range.end);
+		}
+		if (has_right_parans) {
+			max_end++; // +1 for )
+		}
+		let this_range = new IndexRange(0, max_end);
+		if (debug) {
+			console.log(`this: ${this} range: ${this_range} has_left_parans: ${has_left_parans} has_right_parans: ${has_right_parans}\n` +
+						`left_start: ${left_start} left_max_end: ${left_max_end} right_start: ${right_start} max_end: ${max_end}`);
+		}
+		return [[this_range, this], ...left_ranges, ...right_ranges];
 	}
 
 	public replace_child(old_child: LambdaObject, new_child: LambdaObject) : void {
@@ -491,9 +584,6 @@ export class Application extends LambdaTree {
 	}
 	
 	public eq(other: LambdaObject, var_mapping: VariableMapping | null) : boolean {
-		if (debug) {
-		console.log(`this: ${this} other: ${other}`);
-		}
 		if (!(other instanceof Application)) {
 			return false;
 		}
@@ -534,6 +624,14 @@ export class Variable extends LambdaObject {
 	public repr() : string {
 		return this.symbol;
 	}
+
+	public object_ranges() : [IndexRange, LambdaObject][] {
+		let this_range = new IndexRange(0, this.symbol.length);
+		if (debug) {
+			console.log(`this: ${this} range: ${this_range}`);
+		}
+		return [[this_range, this]];
+	}
 	
 	public redexes() : Application[] {
 		return [];
@@ -549,14 +647,13 @@ export class Variable extends LambdaObject {
 
 	public replace(variable: Variable, replacement: LambdaObject) : void {}
 
+	public alpha_rename(variable: Variable, param_free_vars: Set<string>) : void {}
+
 	public get_symbol() : string {
 		return this.symbol;
 	}
 	
 	public eq(other: LambdaObject, var_mapping: VariableMapping | null) : boolean {
-		if (debug) {
-			console.log(`this: ${this} other: ${other}`);
-		}
 		if (!(other instanceof Variable)) {
 			return false;
 		}

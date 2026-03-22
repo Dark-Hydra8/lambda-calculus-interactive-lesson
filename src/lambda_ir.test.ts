@@ -1,6 +1,7 @@
 import { Application, Lambda, Variable, LambdaObject, norm_ord_reduce, set_debug } from './lambda_ir';
 import { Parser } from './parser';
 import { replace_globals } from "./handle_dependencies";
+import { random_lambda } from './random_lambda';
 
 
 test("test the reduction of a lambda function", () => {
@@ -368,4 +369,240 @@ test("test the detection of free variables", () => {
 		"λx.(λy.w y) z"
 	).parse_input()[0] as LambdaObject;
 	expect(lambdaObj.get_free_vars()).toEqual(new Set(["z", "w"]));
+});
+
+test("test the alpha renaming functionality", () => {
+	let lambdaObjs = new Parser(
+		"λx.x y\n" +
+		"λx'.x' y"
+	).parse_input() as LambdaObject[];
+	lambdaObjs[0].alpha_rename(new Variable("y"), new Set(["x"]));
+	expect(lambdaObjs[0].eq(lambdaObjs[1], null)).toEqual(true);
+
+	lambdaObjs = new Parser(
+		"x y\n" +
+		"x y"
+	).parse_input() as LambdaObject[];
+	lambdaObjs[0].alpha_rename(new Variable("y"), new Set(["x"]));
+	expect(lambdaObjs[0].eq(lambdaObjs[1], null)).toEqual(true);
+	
+	lambdaObjs = new Parser(
+		"λx.λy.x y z\n" +
+		"λx'.λy'.x' y' z"
+	).parse_input() as LambdaObject[];
+	lambdaObjs[0].alpha_rename(new Variable("z"), new Set(["x", "y"]));
+	expect(lambdaObjs[0].eq(lambdaObjs[1], null)).toEqual(true);
+
+	lambdaObjs = new Parser(
+		"λx.λy.x y z\n" +
+		"λx.λy'.x y' z"
+	).parse_input() as LambdaObject[];
+	lambdaObjs[0].alpha_rename(new Variable("z"), new Set(["y"]));
+	expect(lambdaObjs[0].eq(lambdaObjs[1], null)).toEqual(true);
+
+	lambdaObjs = new Parser(
+		"λx.λy.x y\n" +
+		"λx.λy.x y"
+	).parse_input() as LambdaObject[];
+	lambdaObjs[0].alpha_rename(new Variable("z"), new Set(["x", "y"]));
+	expect(lambdaObjs[0].eq(lambdaObjs[1], null)).toEqual(true);
+
+	lambdaObjs = new Parser(
+		"λx.λy.x y z\n" +
+		"λx.λy.x y z"
+	).parse_input() as LambdaObject[];
+	lambdaObjs[0].alpha_rename(new Variable("x"), new Set(["x", "y"]));
+	expect(lambdaObjs[0].eq(lambdaObjs[1], null)).toEqual(true);
+
+	lambdaObjs = new Parser(
+		"λx.λy.x y z\n" +
+		"λx.λy.x y z"
+	).parse_input() as LambdaObject[];
+	lambdaObjs[0].alpha_rename(new Variable("z"), new Set());
+	expect(lambdaObjs[0].eq(lambdaObjs[1], null)).toEqual(true);
+});
+
+test("test that parsing the string version of a random lambda expression results in the same lambda object", () => {
+	for (let i = 0; i < 100; i++) {
+		let lambdaObj = random_lambda(["a", "b", "c", "d", "e", "f", "g", "e"], 8);
+		let lambdaStr = String(lambdaObj);
+		let parsedObj = new Parser(lambdaStr).parse_input()[0] as LambdaObject;
+		expect(lambdaObj.eq(parsedObj, null)).toEqual(true);
+	}
+});
+
+test("test the object_ranges function", () => {
+	let lambdaObjs = new Parser(
+		"λx.x y\n" +
+		"x\n" +
+		"x y\n" +
+		"y"
+	).parse_input() as LambdaObject[];
+	let is_first = true;
+	for (let [range, obj] of lambdaObjs[0].object_ranges()) {
+		if (lambdaObjs[0].eq(obj, null)) {
+			// Whole expression
+			expect(range.start).toEqual(0);
+			expect(range.end).toEqual(5);
+		} else if (lambdaObjs[1].eq(obj, null) && is_first) {
+			// first x
+			expect(range.start).toEqual(1);
+			expect(range.end).toEqual(2);
+			is_first = false;
+		} else if (lambdaObjs[1].eq(obj, null) && !is_first) {
+			// second x
+			expect(range.start).toEqual(3);
+			expect(range.end).toEqual(4);
+		} else if (lambdaObjs[2].eq(obj, null)) {
+			// x y
+			expect(range.start).toEqual(3);
+			expect(range.end).toEqual(5);
+		} else if (lambdaObjs[3].eq(obj, null)) {
+			// y
+			expect(range.start).toEqual(4);
+			expect(range.end).toEqual(5);
+		} else {
+			throw new Error(`Unknown object: ${obj}`);
+		}
+	}
+
+	lambdaObjs = new Parser(
+		"( (  ( λ x . ( ( x y ) ) ) ) )\n" +
+		"λx.x y"
+	).parse_input() as LambdaObject[];
+	let range1 = lambdaObjs[0].object_ranges();
+	let range2 = lambdaObjs[1].object_ranges();
+	for (let i = 0; i < range1.length; i++) {
+		expect(range1[i][0].start).toEqual(range2[i][0].start);
+		expect(range1[i][0].end).toEqual(range2[i][0].end);
+		expect(range1[i][1].eq(range2[i][1], null)).toEqual(true);
+	}
+
+	lambdaObjs = new Parser(
+		"(λx.x) y\n" +
+		"x\n" +
+		"λx.x\n" +
+		"y"
+	).parse_input() as LambdaObject[];
+	is_first = true;
+	for (let [range, obj] of lambdaObjs[0].object_ranges()) {
+		if (lambdaObjs[0].eq(obj, null)) {
+			// Whole expression
+			expect(range.start).toEqual(0);
+			expect(range.end).toEqual(7);
+		} else if (lambdaObjs[1].eq(obj, null) && is_first) {
+			// first x
+			expect(range.start).toEqual(2);
+			expect(range.end).toEqual(3);
+			is_first = false;
+		} else if (lambdaObjs[1].eq(obj, null) && !is_first) {
+			// second x
+			expect(range.start).toEqual(4);
+			expect(range.end).toEqual(5);
+		} else if (lambdaObjs[2].eq(obj, null)) {
+			// λx.x
+			expect(range.start).toEqual(1);
+			expect(range.end).toEqual(5);
+		} else if (lambdaObjs[3].eq(obj, null)) {
+			// y
+			expect(range.start).toEqual(6);
+			expect(range.end).toEqual(7);
+		} else {
+			throw new Error(`Unknown object: ${obj}`);
+		}
+	}
+
+	lambdaObjs = new Parser(
+		"(λx.y) (a b)\n" +
+		"λx.y\n" +
+		"x\n" +
+		"y\n" +
+		"a b\n" +
+		"a\n" +
+		"b"
+	).parse_input() as LambdaObject[];
+	for (let [range, obj] of lambdaObjs[0].object_ranges()) {
+		if (lambdaObjs[0].eq(obj, null)) {
+			// Whole expression
+			expect(range.start).toEqual(0);
+			expect(range.end).toEqual(10);
+		} else if (lambdaObjs[1].eq(obj, null)) {
+			// λx.y
+			expect(range.start).toEqual(1);
+			expect(range.end).toEqual(5);
+		} else if (lambdaObjs[2].eq(obj, null)) {
+			// x
+			expect(range.start).toEqual(2);
+			expect(range.end).toEqual(3);
+		} else if (lambdaObjs[3].eq(obj, null)) {
+			// y
+			expect(range.start).toEqual(4);
+			expect(range.end).toEqual(5);
+		} else if (lambdaObjs[4].eq(obj, null)) {
+			// a b
+			expect(range.start).toEqual(7);
+			expect(range.end).toEqual(9);
+		} else if (lambdaObjs[5].eq(obj, null)) {
+			// a
+			expect(range.start).toEqual(7);
+			expect(range.end).toEqual(8);
+		} else if (lambdaObjs[6].eq(obj, null)) {
+			// b
+			expect(range.start).toEqual(8);
+			expect(range.end).toEqual(9);
+		} else {
+			throw new Error(`Unknown object: ${obj}`);
+		}
+	}
+
+	lambdaObjs = new Parser(
+		"a (λb.c) d\n" +
+		"a (λb.c)\n" +
+		"a\n" +
+		"λb.c\n" +
+		"b\n" +
+		"c\n" +
+		"d"
+	).parse_input() as LambdaObject[];
+	for (let [range, obj] of lambdaObjs[0].object_ranges()) {
+		if (lambdaObjs[0].eq(obj, null)) {
+			// Whole expression
+			expect(range.start).toEqual(0);
+			expect(range.end).toEqual(8);
+		} else if (lambdaObjs[1].eq(obj, null)) {
+			// a (λb.c)
+			expect(range.start).toEqual(0);
+			expect(range.end).toEqual(7);
+		} else if (lambdaObjs[2].eq(obj, null)) {
+			// a
+			expect(range.start).toEqual(0);
+			expect(range.end).toEqual(1);
+		} else if (lambdaObjs[3].eq(obj, null)) {
+			// λb.c
+			expect(range.start).toEqual(2);
+			expect(range.end).toEqual(6);
+		} else if (lambdaObjs[4].eq(obj, null)) {
+			// b
+			expect(range.start).toEqual(3);
+			expect(range.end).toEqual(4);
+		} else if (lambdaObjs[5].eq(obj, null)) {
+			// c
+			expect(range.start).toEqual(5);
+			expect(range.end).toEqual(6);
+		} else if (lambdaObjs[6].eq(obj, null)) {
+			// d
+			expect(range.start).toEqual(7);
+			expect(range.end).toEqual(8);
+		} else {
+			throw new Error(`Unknown object: ${obj}`);
+		}
+	}
+
+	for (let i = 0; i < 100; i++) {
+		let lambdaObj = random_lambda(["a", "b", "c", "d", "e", "f", "g", "h"], 8);
+		for (let [range, obj] of lambdaObj.object_ranges()) {
+			let no_space_str = String(obj).replace(/\s/g, '');
+			expect(range.end - range.start).toEqual(no_space_str.length);
+		}
+	}
 });

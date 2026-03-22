@@ -62,53 +62,16 @@ function countApplications(obj: LambdaObject): number {
   return 0;
 }
 
-// Build application ranges: each Application node gets one range (start to end, positions without spaces)
-function buildApplicationRanges(
-  obj: LambdaObject,
-  startPos: number,
-  applicationRanges: ApplicationRange[],
-  _fullString: string
-): number {
-  if (obj instanceof Variable) {
-    return startPos + obj.get_symbol().length;
-  }
-  if (obj instanceof Lambda) {
-    let pos = startPos;
-    pos += 1;
-    pos += obj.get_parameter().get_symbol().length;
-    pos += 1;
-    return buildApplicationRanges(obj.get_body(), pos, applicationRanges, _fullString);
-  }
-  if (obj instanceof Application) {
-    const leftNeedsParens = obj.get_left() instanceof Lambda;
-    const rightNeedsParens =
-      obj.get_right() instanceof Application ||
-      (obj.get_right() instanceof Lambda &&
-        obj.get_parent() instanceof Application &&
-        (obj.get_parent() as Application).get_left() === obj);
-    const appStart = startPos;
-    let pos = startPos;
-    if (leftNeedsParens) {
-      pos += 1;
-      pos = buildApplicationRanges(obj.get_left(), pos, applicationRanges, _fullString);
-      pos += 1;
-    } else {
-      pos = buildApplicationRanges(obj.get_left(), pos, applicationRanges, _fullString);
+/** Applications to highlight: left child is not an application (same rule as before). */
+function usefulApplicationRanges(question: LambdaObject): ApplicationRange[] {
+  const ranges: ApplicationRange[] = [];
+  for (const [ir, obj] of question.object_ranges()) {
+    if (obj instanceof Application && !(obj.get_left() instanceof Application)) {
+      ranges.push({ application: obj, start: ir.start, end: ir.end });
     }
-    if (rightNeedsParens) {
-      pos += 1;
-      pos = buildApplicationRanges(obj.get_right(), pos, applicationRanges, _fullString);
-      pos += 1;
-    } else {
-      pos = buildApplicationRanges(obj.get_right(), pos, applicationRanges, _fullString);
-    }
-    // Only include applications whose left element is not an application
-    if (!(obj.get_left() instanceof Application)) {
-      applicationRanges.push({ application: obj, start: appStart, end: pos });
-    }
-    return pos;
   }
-  return startPos;
+  ranges.sort((a, b) => a.start - b.start);
+  return ranges;
 }
 
 function new_question(): LambdaObject {
@@ -175,12 +138,10 @@ export const ApplicationLesson: React.FC<{
 
   const currentQuestion = questions[currentIndex];
 
-  const applicationRanges = useMemo(() => {
-    const ranges: ApplicationRange[] = [];
-    buildApplicationRanges(currentQuestion.question, 0, ranges, currentQuestion.questionStr);
-    ranges.sort((a, b) => a.start - b.start);
-    return ranges;
-  }, [currentQuestion.question, currentQuestion.questionStr]);
+  const applicationRanges = useMemo(
+    () => usefulApplicationRanges(currentQuestion.question),
+    [currentQuestion.question]
+  );
 
   const { displayStr, originalToDisplay, displayToOriginal } = useMemo(
     () => addSpacesAroundParens(currentQuestion.questionStr),

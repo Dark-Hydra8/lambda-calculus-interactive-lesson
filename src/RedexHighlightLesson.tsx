@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import './styles.css';
-import { LambdaObject, Variable, Application, Lambda } from './lambda_ir';
+import { LambdaObject, Application } from './lambda_ir';
 import { random_lambda } from './random_lambda';
 import { Parser } from './parser';
 import { addSpacesAroundParens } from './displayParens';
@@ -13,12 +13,6 @@ type Question = {
 };
 
 type SelectionRange = {
-  start: number;
-  end: number;
-};
-
-type ApplicationRange = {
-  application: Application;
   start: number;
   end: number;
 };
@@ -56,75 +50,11 @@ function positionWithSpaces(text: string, posWithoutSpaces: number): number {
 
 function new_question(): LambdaObject {
   let lambda: LambdaObject;
-  let target;
+  let target = Math.floor(2 * Math.random()) + 1;
   do {
     lambda = random_lambda(["w", "x", "y", "z"], 3);
-    target = Math.floor(2 * Math.random()) + 1;
   } while (lambda.redexes().length <= target);
   return lambda;
-}
-
-// Build a mapping of character positions to Application objects
-// Traverses the tree and tracks character positions WITHOUT counting spaces
-function buildApplicationRanges(
-  obj: LambdaObject,
-  startPos: number,
-  applicationRanges: ApplicationRange[],
-  fullString: string
-): number {
-  if (obj instanceof Variable) {
-    return startPos + obj.get_symbol().length;
-  } else if (obj instanceof Lambda) {
-    let pos = startPos;
-    pos += 1; // λ
-    pos += obj.get_parameter().get_symbol().length;
-    pos += 1; // .
-    pos = buildApplicationRanges(obj.get_body(), pos, applicationRanges, fullString);
-    return pos;
-  } else if (obj instanceof Application) {
-    const appStart = startPos;
-    
-    const leftNeedsParens = obj.get_left() instanceof Lambda;
-    const rightNeedsParens = obj.get_right() instanceof Application || 
-                            (obj.get_right() instanceof Lambda && 
-                             obj.get_parent() instanceof Application && 
-                             (obj.get_parent() as Application).get_left() === obj);
-    
-    let pos = startPos;
-    if (leftNeedsParens) pos += 1; // (
-    pos = buildApplicationRanges(obj.get_left(), pos, applicationRanges, fullString);
-    if (leftNeedsParens) pos += 1; // )
-    // Skip space - don't increment pos
-    if (rightNeedsParens) pos += 1; // (
-    pos = buildApplicationRanges(obj.get_right(), pos, applicationRanges, fullString);
-    if (rightNeedsParens) pos += 1; // )
-    
-    // Record the range for this application (positions without spaces)
-    applicationRanges.push({
-      application: obj,
-      start: appStart,
-      end: pos,
-    });
-    
-    return pos;
-  }
-  return startPos;
-}
-
-// Find all Applications that overlap with the selection range
-function findApplicationsInRange(
-  selection: SelectionRange,
-  applicationRanges: ApplicationRange[]
-): Application[] {
-  const result: Application[] = [];
-  for (const range of applicationRanges) {
-    // Check if selection overlaps with application range
-    // Selection overlaps if: selection.start < range.end && selection.end > range.start
-    if (selection.start < range.end && selection.end > range.start) {
-      result.push(range.application);
-    }
-  }
-  return result;
 }
 
 type ConfirmedRedex = {
@@ -166,37 +96,15 @@ export const RedexHighlightLesson: React.FC<{
   }
 
   const currentQuestion = questions[currentIndex];
-  
-  // Build application ranges for the current question (positions without spaces)
-  const applicationRanges = useMemo(() => {
-    const ranges: ApplicationRange[] = [];
-    const fullString = currentQuestion.questionStr;
-    buildApplicationRanges(currentQuestion.question, 0, ranges, fullString);
-    // Sort by start position for easier processing
-    ranges.sort((a, b) => a.start - b.start);
-    return ranges;
-  }, [currentIndex]);
 
-  // Build mapping from redex Application to its range using redex_ranges()
+  // Map each redex Application to its span in the no-space question string (object identity)
   const redexToRangeMap = useMemo(() => {
     const map = new Map<Application, SelectionRange>();
-    const allRedexRanges = currentQuestion.question.redex_ranges();
-    const allRedexes = currentQuestion.correctRedexes;
-    const questionStrNoSpaces = currentQuestion.questionStr.replace(/\s/g, '');
-    
-    // Match each redex to its range by checking which range's substring matches the redex string
-    // For nested redexes, we want the outermost range that exactly matches the redex
-    for (const redex of allRedexes) {
-      const redexStrNoSpaces = String(redex).replace(/\s/g, '');
-      // Find the range that exactly matches this redex's string representation
-      // Sort ranges by size (largest first) to prefer outermost ranges
-      const sortedRanges = [...allRedexRanges].sort((a, b) => (b.end - b.start) - (a.end - a.start));
-      for (const range of sortedRanges) {
-        const rangeStr = questionStrNoSpaces.substring(range.start, range.end);
-        if (rangeStr === redexStrNoSpaces) {
-          map.set(redex, { start: range.start, end: range.end });
-          break; // Found the matching range for this redex
-        }
+    const pairs = currentQuestion.question.object_ranges();
+    for (const redex of currentQuestion.correctRedexes) {
+      const found = pairs.find(([, obj]) => obj === redex);
+      if (found) {
+        map.set(redex, { start: found[0].start, end: found[0].end });
       }
     }
     return map;
