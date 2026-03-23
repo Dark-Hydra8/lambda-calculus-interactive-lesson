@@ -84,12 +84,13 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
   }, [identity, identityLoading]);
 
   const hasLessonCheck = (lessonId: LessonId): boolean => (answeredCorrectByLesson[lessonId] ?? 0) >= 4;
-  const lessonCompletionMessage =
-    (<div>
-    Congradulations! You have finished this task! <br/>
-    You can move onto the next one or keep going! <br/>
-    If you have finished all tasks, it would be greatly appritiated if you took the ending servey!
-    </div>);
+  const lessonCompletionMessage = (
+    <>
+      Congradulations! You have finished this task! <br />
+      You can move onto the next one or keep going! <br />
+      If you have finished all tasks, it would be greatly appritiated if you took the ending servey!
+    </>
+  );
   const completionMessage = (lessonId: LessonId) =>
     hasLessonCheck(lessonId) ? (
       <div className="container" style={{ marginTop: '12px' }}>
@@ -212,12 +213,14 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
         User id: <strong>{identity?.userId ?? '—'}</strong>
       </p>
       <div style={{ marginBottom: '18px', color: '#555' }}>
-        <p style={{ marginBottom: '8px' }}><strong>Lambda calculus in one minute:</strong></p>
+        <p style={{ marginBottom: '8px' }}><strong>How to navigate this website:</strong></p>
         <ul style={{ margin: '0 0 0 20px', padding: 0 }}>
-          <li>Everything is built from variables, lambda abstractions, and applications.</li>
-          <li><strong>λx.t</strong> means "a function with parameter x and body t".</li>
-          <li><strong>M N</strong> means "apply function M to argument N".</li>
-          <li>Beta reduction replaces bound uses of a parameter with the argument.</li>
+          <li>Pick a lesson using the cards below (each one practices a single skill).</li>
+          <li>Read the general information in the Info menu (the ? button) if you want quick definitions and examples.</li>
+          <li>Use the Help/Info panel (the ? button) in the top right the lesson content whenever you need a reminder.</li>
+          <li>In a lesson, focus on the highlighted part on the page, choose what the lesson asks for, then click <code>Submit</code>.</li>
+          <li>If you get stuck, click <code>Show Answer</code>, then continue with <code>Next Question</code>.</li>
+          <li>Use <code>← Back to Menu</code> to switch lessons.</li>
         </ul>
       </div>
       <p style={{ marginBottom: '30px', color: '#666' }}>Choose a lesson to practice one core skill at a time:</p>
@@ -234,24 +237,34 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
 
       <div className="lesson-menu">
         <div className="lesson-card" onClick={() => setCurrentLesson('application')}>
-          <h2>Identfy Useful Applications {hasLessonCheck('application') ? '✅' : ''}</h2>
-          <p>Identify and highlight every application (M applied to N, written M N) in lambda calculus expressions.</p>
+          <h2>Identify Useful Applications {hasLessonCheck('application') ? '✅' : ''}</h2>
+          <p>
+            Learn what an application “looks like” in λ-calculus: <code>M N</code>. In this lesson, you will highlight every useful application (where <code>M</code> is not itself an application).
+          </p>
         </div>
         <div className="lesson-card" onClick={() => setCurrentLesson('redex-highlight')}>
           <h2>Redex Highlighting {hasLessonCheck('redex-highlight') ? '✅' : ''}</h2>
-          <p>Identify and highlight all redexes (applications where the left side is a lambda abstraction) in lambda calculus expressions.</p>
+          <p>
+            Learn β-redexes (the next thing you can simplify). A redex has the form <code>(λx.t) u</code>. You will highlight every redex in the expression.
+          </p>
         </div>
         <div className="lesson-card" onClick={() => setCurrentLesson('variable-binding')}>
           <h2>Variable Binding {hasLessonCheck('variable-binding') ? '✅' : ''}</h2>
-          <p>For each variable in a lambda expression, identify which lambda abstraction it is bound to (or mark it as a free variable).</p>
-        </div>
-        <div className="lesson-card" onClick={() => setCurrentLesson('alpha-rename')}>
-          <h2>Alpha Renaming {hasLessonCheck('alpha-rename') ? '✅' : ''}</h2>
-          <p>Learn alpha renaming by selecting which variables in a redex should be renamed to avoid variable capture.</p>
+          <p>
+            Learn “who owns each variable”: every <code>λx</code> controls the <code>x</code> occurrences in its body. You will select which <code>λ</code> owns each variable occurrence (or choose “free variable” if it is not owned).
+          </p>
         </div>
         <div className="lesson-card" onClick={() => setCurrentLesson('normal-order')}>
           <h2>Beta Reduction {hasLessonCheck('normal-order') ? '✅' : ''}</h2>
-          <p>Practice beta reduction. Enter the reduced form of each expression step by step.</p>
+          <p>
+            Practice β-reduction by selecting which occurrences of the redex’s parameter get replaced by the argument. The app highlights the current redex and guides you through the substitution.
+          </p>
+        </div>
+        <div className="lesson-card" onClick={() => setCurrentLesson('alpha-rename')}>
+          <h2>Alpha Renaming {hasLessonCheck('alpha-rename') ? '✅' : ''}</h2>
+          <p>
+            Learn α-renaming (changing the names of bound variables inside a λ without changing meaning). You will rename λ-parts inside the highlighted redex so the next substitution doesn’t accidentally change the meaning of variables.
+          </p>
         </div>
       </div>
     </div>

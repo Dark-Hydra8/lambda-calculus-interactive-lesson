@@ -377,49 +377,56 @@ test("test the alpha renaming functionality", () => {
 		"λx'.x' y"
 	).parse_input() as LambdaObject[];
 	lambdaObjs[0].alpha_rename(new Variable("y"), new Set(["x"]));
-	expect(lambdaObjs[0].eq(lambdaObjs[1], null)).toEqual(true);
+	expect(String(lambdaObjs[0])).toEqual(String(lambdaObjs[1]));
 
 	lambdaObjs = new Parser(
 		"x y\n" +
 		"x y"
 	).parse_input() as LambdaObject[];
 	lambdaObjs[0].alpha_rename(new Variable("y"), new Set(["x"]));
-	expect(lambdaObjs[0].eq(lambdaObjs[1], null)).toEqual(true);
+	expect(String(lambdaObjs[0])).toEqual(String(lambdaObjs[1]));
 	
 	lambdaObjs = new Parser(
 		"λx.λy.x y z\n" +
 		"λx'.λy'.x' y' z"
 	).parse_input() as LambdaObject[];
 	lambdaObjs[0].alpha_rename(new Variable("z"), new Set(["x", "y"]));
-	expect(lambdaObjs[0].eq(lambdaObjs[1], null)).toEqual(true);
+	expect(String(lambdaObjs[0])).toEqual(String(lambdaObjs[1]));
 
 	lambdaObjs = new Parser(
 		"λx.λy.x y z\n" +
 		"λx.λy'.x y' z"
 	).parse_input() as LambdaObject[];
 	lambdaObjs[0].alpha_rename(new Variable("z"), new Set(["y"]));
-	expect(lambdaObjs[0].eq(lambdaObjs[1], null)).toEqual(true);
+	expect(String(lambdaObjs[0])).toEqual(String(lambdaObjs[1]));
 
 	lambdaObjs = new Parser(
 		"λx.λy.x y\n" +
 		"λx.λy.x y"
 	).parse_input() as LambdaObject[];
 	lambdaObjs[0].alpha_rename(new Variable("z"), new Set(["x", "y"]));
-	expect(lambdaObjs[0].eq(lambdaObjs[1], null)).toEqual(true);
+	expect(String(lambdaObjs[0])).toEqual(String(lambdaObjs[1]));
 
 	lambdaObjs = new Parser(
 		"λx.λy.x y z\n" +
 		"λx.λy.x y z"
 	).parse_input() as LambdaObject[];
 	lambdaObjs[0].alpha_rename(new Variable("x"), new Set(["x", "y"]));
-	expect(lambdaObjs[0].eq(lambdaObjs[1], null)).toEqual(true);
+	expect(String(lambdaObjs[0])).toEqual(String(lambdaObjs[1]));
 
 	lambdaObjs = new Parser(
 		"λx.λy.x y z\n" +
 		"λx.λy.x y z"
 	).parse_input() as LambdaObject[];
 	lambdaObjs[0].alpha_rename(new Variable("z"), new Set());
-	expect(lambdaObjs[0].eq(lambdaObjs[1], null)).toEqual(true);
+	expect(String(lambdaObjs[0])).toEqual(String(lambdaObjs[1]));
+
+	lambdaObjs = new Parser(
+		"(λv.λw.λz.v w z) ((λv.v) (v y) z)\n" +
+		"(λv.λw.λz'.v w z') ((λv.v) (v y) z)"
+	).parse_input() as LambdaObject[];
+	((lambdaObjs[0] as Application).get_left() as Lambda).get_body().alpha_rename(new Variable("v"), new Set(["v", "y", "z"]));
+	expect(String(lambdaObjs[0])).toEqual(String(lambdaObjs[1]));
 });
 
 test("test that parsing the string version of a random lambda expression results in the same lambda object", () => {

@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import './styles.css';
-import { LambdaObject, Variable, Application, Lambda, LambdaTree, norm_ord_reduce, all_variables } from './lambda_ir';
+import { LambdaObject, Variable, Application, Lambda, norm_ord_reduce, all_variables } from './lambda_ir';
 import { getParenPairMap, PAREN_COLORS, renderStringWithColoredParens } from './coloredParens';
 import { random_with_unique_lambdas, random_variable } from './random_lambda';
-import { sets_eq, difference } from './SetOperations';
+import { difference } from './SetOperations';
 import { Parser } from './parser';
 
 type Question = {
@@ -21,29 +21,21 @@ type VariableOccurrence = {
   isBoundBy: Variable | null; // Which lambda parameter binds this variable
 };
 
-/** Strip trailing primes for display (x' -> x, x'' -> x) */
-function stripPrimes(s: string): string {
-  return s.replace(/'+/g, '');
+function buildParamVarToParamId(occurrences: VariableOccurrence[]): Map<Variable, string> {
+  const map = new Map<Variable, string>();
+  for (const occ of occurrences) {
+    if (occ.id.startsWith('param-') || occ.id.endsWith('.param')) {
+      map.set(occ.variable as Variable, occ.id);
+    }
+  }
+  return map;
 }
 
-/** Build display string for a reduced expression with variable names shown without primes. */
-function reducedToDisplayString(obj: LambdaObject): string {
-  if (obj instanceof Variable) return stripPrimes(obj.get_symbol());
-  if (obj instanceof Lambda) {
-    const param = stripPrimes(obj.get_parameter().get_symbol());
-    const body = reducedToDisplayString(obj.get_body());
-    return 'λ' + param + '.' + body;
-  }
-  if (obj instanceof Application) {
-    const left = obj.get_left();
-    const right = obj.get_right();
-    const lStr = left instanceof Lambda ? '(' + reducedToDisplayString(left) + ')' : reducedToDisplayString(left);
-    const rStr = right instanceof Lambda || right instanceof Application
-      ? '(' + reducedToDisplayString(right) + ')'
-      : reducedToDisplayString(right);
-    return lStr + ' ' + rStr;
-  }
-  return '';
+/** Checkbox group: parameter occurrence id, or all uses bound by the same λ share the param's id. */
+function binderKeyForOccurrence(occ: VariableOccurrence, paramVarToParamId: Map<Variable, string>): string {
+  if (occ.id.startsWith('param-') || occ.id.endsWith('.param')) return occ.id;
+  if (occ.isBoundBy) return paramVarToParamId.get(occ.isBoundBy) ?? occ.id;
+  return occ.id;
 }
 
 let questions: Question[] = [];
@@ -97,7 +89,7 @@ function parameter_count(redex: Application): number {
 function new_question(): Application {
   let is_accepted: (lambda_object: Application) => boolean;
   const base_vars = new Set(['v', 'w', 'x', 'y', 'z']);
-  switch (Math.floor(6 / 6 * Math.random()) + 4) {
+  switch (Math.floor(6 * Math.random())) {
     case 0: // Short argument with no renaming
       is_accepted = (lambda_object: Application) => {
         const length = String(lambda_object).length;
@@ -261,14 +253,8 @@ function isInRedexSubtree(obj: LambdaObject, redex: Application | null): boolean
   return checkDescendant(redex.get_left()) || checkDescendant(redex.get_right());
 }
 
-// Check if a variable occurrence is in the redex
-function isOccurrenceInRedex(occurrence: VariableOccurrence, redex: Application): boolean {
-  return isInRedexSubtree(occurrence.variable, redex);
-}
-
 type ResponseRecord = {
   questionStr: string;
-  reducedDisplayStr: string;
   isCorrect: boolean;
 };
 
@@ -306,12 +292,38 @@ export const AlphaRenameLesson: React.FC<{
     const occurrences: VariableOccurrence[] = [];
     findVariableOccurrences(currentQuestion.question, redex, occurrences);
     return occurrences;
-  }, [currentIndex]);
+  }, [currentIndex, currentQuestion.question, redex]);
 
-  // Get occurrences that are in the redex
-  const redexOccurrences = useMemo(() => {
-    return variableOccurrences.filter(occ => occ.isInRedex);
-  }, [variableOccurrences]);
+  const paramVarToParamIdOrig = useMemo(
+    () => buildParamVarToParamId(variableOccurrences),
+    [variableOccurrences]
+  );
+
+  /** Same capture-avoiding renames beta reduction applies, without substituting the argument. */
+  const captureAvoidingPreview = useMemo(() => {
+    const copy = currentQuestion.question.copy();
+    const rx = copy.norm_ord_redex() as Application | null;
+    if (rx === null || !(rx.get_left() instanceof Lambda)) return copy;
+    const lam = rx.get_left() as Lambda;
+    lam.get_body().alpha_rename(lam.get_parameter(), rx.get_right().get_free_vars());
+    return copy;
+  }, [currentQuestion.question]);
+
+  const correctBinderKeys = useMemo(() => {
+    const occOrig: VariableOccurrence[] = [];
+    const occPrev: VariableOccurrence[] = [];
+    const previewRedex = captureAvoidingPreview.norm_ord_redex() as Application;
+    findVariableOccurrences(currentQuestion.question, redex, occOrig);
+    findVariableOccurrences(captureAvoidingPreview, previewRedex, occPrev);
+    const keys = new Set<string>();
+    if (occOrig.length !== occPrev.length) return keys;
+    for (let i = 0; i < occOrig.length; i++) {
+      if (occOrig[i].symbol !== occPrev[i].symbol) {
+        keys.add(binderKeyForOccurrence(occOrig[i], paramVarToParamIdOrig));
+      }
+    }
+    return keys;
+  }, [currentQuestion.question, redex, captureAvoidingPreview, paramVarToParamIdOrig]);
 
   const handleToggleOccurrence = (occurrenceId: string) => {
     setSelectedOccurrences(prev => {
@@ -325,87 +337,12 @@ export const AlphaRenameLesson: React.FC<{
     });
   };
 
-  // Reduced expression and the subtree that is the result of the reduction (for highlighting)
-  const reducedExpression = useMemo(() => {
-    const copy = currentQuestion.question.copy();
-    return norm_ord_reduce(copy) ?? copy;
-  }, [currentQuestion.question]);
-
-  // Variable occurrences in the reduced expression (for checkboxes)
-  const reducedVariableOccurrences = useMemo(() => {
-    const occurrences: VariableOccurrence[] = [];
-    findVariableOccurrences(reducedExpression, null, occurrences);
-    return occurrences;
-  }, [reducedExpression]);
-
-  // Map lambda parameter nodes (Variable objects) to their parameter-occurrence IDs.
-  const paramVarToParamId = useMemo(() => {
-    const map = new Map<Variable, string>();
-    for (const occ of reducedVariableOccurrences) {
-      const isParamOcc = occ.id.startsWith('param-') || occ.id.endsWith('.param');
-      if (isParamOcc) {
-        map.set(occ.variable as Variable, occ.id);
-      }
-    }
-    return map;
-  }, [reducedVariableOccurrences]);
-
-  const binderKeyForOccurrence = (occ: VariableOccurrence): string => {
-    const isParamOcc = occ.id.startsWith('param-') || occ.id.endsWith('.param');
-    if (isParamOcc) return occ.id;
-    if (occ.isBoundBy) return paramVarToParamId.get(occ.isBoundBy) ?? occ.id;
-    return occ.id;
-  };
-
-  // In the reduced expression, variables that were renamed have ' in their symbol.
-  // Convert that into "binder keys" so all occurrences bound to the same λ share state.
-  const reducedVariablesToRename = useMemo(() => {
-    const correctBinderKeys = new Set<string>();
-    for (const occ of reducedVariableOccurrences) {
-      if (/'/.test(occ.symbol)) {
-        correctBinderKeys.add(binderKeyForOccurrence(occ));
-      }
-    }
-    return correctBinderKeys;
-  }, [reducedVariableOccurrences, paramVarToParamId]);
-
-  // Determine which variables should be renamed in original (kept for redexOccurrences / display logic)
-  const variablesToRename = useMemo(() => {
-    const toRename = new Set<string>();
-
-    if (redex.get_left() instanceof Lambda) {
-      const lambda = redex.get_left() as Lambda;
-      const parameter = lambda.get_parameter();
-      const body = lambda.get_body();
-      const argument = redex.get_right();
-
-      const freeVarsInArgument = argument.get_free_vars();
-
-      if (freeVarsInArgument.has(parameter.get_symbol())) {
-        const paramOcc = redexOccurrences.find(occ =>
-          occ.variable === parameter && !occ.isBound
-        );
-        if (paramOcc) {
-          toRename.add(paramOcc.id);
-        }
-      }
-
-      redexOccurrences.forEach(occ => {
-        if (occ.isBound && occ.isBoundBy && freeVarsInArgument.has(occ.symbol)) {
-          toRename.add(occ.id);
-        }
-      });
-    }
-
-    return toRename;
-  }, [redex, redexOccurrences]);
-
   const handleSubmit = () => {
     onSubmit?.();
     setIsSubmitted(true);
 
     const selectedSet = new Set(selectedOccurrences);
-    const correctSet = reducedVariablesToRename;
+    const correctSet = correctBinderKeys;
 
     const correct = selectedSet.size === correctSet.size &&
       Array.from(selectedSet).every(id => correctSet.has(id)) &&
@@ -419,10 +356,7 @@ export const AlphaRenameLesson: React.FC<{
   const handleNext = () => {
     setHadShownAnswerForCurrentQuestion(false);
     if (isSubmitted && isCorrect !== null) {
-      const copy = currentQuestion.question.copy();
-      const reduced = norm_ord_reduce(copy) ?? copy;
-      const reducedDisplayStr = String(reduced);
-      setResponses(prev => [...prev, { questionStr: currentQuestion.questionStr, reducedDisplayStr, isCorrect }]);
+      setResponses(prev => [...prev, { questionStr: currentQuestion.questionStr, isCorrect }]);
     }
     const newQuestion = new_question();
     const newRedex = newQuestion.norm_ord_redex() as Application;
@@ -448,7 +382,6 @@ export const AlphaRenameLesson: React.FC<{
 
   const questionStr = currentQuestion.questionStr;
   const parenPairMap = useMemo(() => getParenPairMap(questionStr), [questionStr]);
-  const reducedParenPairMap = useMemo(() => getParenPairMap(String(reducedExpression)), [reducedExpression]);
 
   // --- Visual highlights for the main redex: (λx.t) t' ---
   // Blue: λx, Green: t, Red: t'
@@ -485,27 +418,6 @@ export const AlphaRenameLesson: React.FC<{
   const tNodeSet = useMemo(() => collectSubtreeNodes(mainRedexBody), [mainRedexBody]);
   const tPrimeNodeSet = useMemo(() => collectSubtreeNodes(mainRedexArg), [mainRedexArg]);
 
-  // In the reduced expression, the new location of t' should be highlighted.
-  // We find any subtree equal to mainRedexArg (alpha-equivalent) and highlight all nodes in that subtree.
-  const tPrimeInsertedNodeSetInReduced = useMemo(() => {
-    const out = new Set<LambdaObject>();
-    const visit = (node: LambdaObject) => {
-      if (node.eq(mainRedexArg, null)) {
-        collectSubtreeNodes(node).forEach(n => out.add(n));
-        return;
-      }
-      if (node instanceof Lambda) {
-        visit(node.get_parameter());
-        visit(node.get_body());
-      } else if (node instanceof Application) {
-        visit(node.get_left());
-        visit(node.get_right());
-      }
-    };
-    visit(reducedExpression);
-    return out;
-  }, [reducedExpression, mainRedexArg]);
-
   const LX_HL = highlightBox('#1E88E5', 'rgba(30,136,229,0.18)');
   const T_HL = highlightBox('#43A047', 'rgba(67,160,71,0.18)');
   const TPRIME_HL = highlightBox('#E53935', 'rgba(229,57,53,0.18)');
@@ -517,12 +429,6 @@ export const AlphaRenameLesson: React.FC<{
     return undefined;
   };
 
-  const getReducedHighlightStyle = (obj: LambdaObject): React.CSSProperties | undefined => {
-    if (tPrimeInsertedNodeSetInReduced.has(obj)) return TPRIME_HL;
-    // Green = the t part (whole reduced expression).
-    return T_HL;
-  };
-
   const renderOriginalExpression = () => {
     const elements: React.ReactNode[] = [];
     let occurrenceIndex = 0;
@@ -531,15 +437,47 @@ export const AlphaRenameLesson: React.FC<{
       if (obj instanceof Variable) {
         const occurrence = variableOccurrences.find(occ => occ.id === path);
         const hl = getOriginalHighlightStyle(obj);
-        // Additional cue: any variable occurrence bound by the redex's λ-parameter
-        // (i.e. occurrences where the binder is exactly that parameter node) is highlighted in blue.
         const boundByRedexLambdaParam = mainRedexParam !== null && occurrence?.isBoundBy === mainRedexParam;
         const boundBlue = boundByRedexLambdaParam ? LX_HL : undefined;
-        elements.push(
-          <span key={`orig-var-${path}`} style={{ verticalAlign: 'baseline', ...(hl ?? {}), ...(boundBlue ?? {}) }}>
-            {occurrence ? occurrence.symbol : obj.get_symbol()}
-          </span>
-        );
+        const textStyle: React.CSSProperties = { verticalAlign: 'baseline', ...(hl ?? {}), ...(boundBlue ?? {}) };
+        if (occurrence && occurrence.isInRedex) {
+          const binderKey = binderKeyForOccurrence(occurrence, paramVarToParamIdOrig);
+          const showAsChecked = showAnswer ? correctBinderKeys.has(binderKey) : selectedOccurrences.has(binderKey);
+          elements.push(
+            <span
+              key={`orig-var-${path}`}
+              style={{ position: 'relative', display: 'inline-block', margin: '0 1px', verticalAlign: 'baseline', lineHeight: '1.2', paddingBottom: '20px' }}
+            >
+              <span style={{ fontWeight: 'normal', display: 'inline-block', ...textStyle }}>{occurrence.symbol}</span>
+              <label
+                style={{
+                  position: 'absolute',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  bottom: '0',
+                  fontSize: '12px',
+                  cursor: isSubmitted ? 'not-allowed' : 'pointer',
+                  whiteSpace: 'nowrap',
+                  lineHeight: '1',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={showAsChecked}
+                  onChange={() => handleToggleOccurrence(binderKey)}
+                  disabled={isSubmitted}
+                  style={{ cursor: isSubmitted ? 'not-allowed' : 'pointer', margin: 0, verticalAlign: 'middle', width: '10px', height: '10px' }}
+                />
+              </label>
+            </span>
+          );
+        } else {
+          elements.push(
+            <span key={`orig-var-${path}`} style={textStyle}>
+              {occurrence ? occurrence.symbol : obj.get_symbol()}
+            </span>
+          );
+        }
         idx.current += obj.get_symbol().length;
       } else if (obj instanceof Lambda) {
         const paramPath = path ? `${path}.param` : `param-${occurrenceIndex++}`;
@@ -590,92 +528,9 @@ export const AlphaRenameLesson: React.FC<{
     return elements;
   };
 
-  const renderReducedExpression = () => {
-    const elements: React.ReactNode[] = [];
-    let occurrenceIndex = 0;
-    let varCounter = 0;
-    const idx = { current: 0 };
-    const renderRecursive = (obj: LambdaObject, path: string = ''): void => {
-      if (obj instanceof Variable) {
-        const lookupId = path || `var-${varCounter++}`;
-        const occurrence = reducedVariableOccurrences.find(occ => occ.id === lookupId);
-        if (occurrence) {
-          const binderKey = binderKeyForOccurrence(occurrence);
-          const showAsChecked = showAnswer ? reducedVariablesToRename.has(binderKey) : selectedOccurrences.has(binderKey);
-          const displaySymbol = stripPrimes(occurrence.symbol);
-          const hl = getReducedHighlightStyle(obj);
-
-          elements.push(
-            <span key={`red-var-${occurrence.id}`} style={{ position: 'relative', display: 'inline-block', margin: '0 1px', verticalAlign: 'baseline', lineHeight: '1.2', paddingBottom: '20px' }}>
-              <span style={{ fontWeight: 'normal', display: 'inline-block', verticalAlign: 'baseline', ...(hl ?? {}) }}>{displaySymbol}</span>
-              <label style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', bottom: '0', fontSize: '12px', cursor: isSubmitted ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', lineHeight: '1' }}>
-                <input
-                  type="checkbox"
-                  checked={showAsChecked}
-                  onChange={() => handleToggleOccurrence(binderKey)}
-                  disabled={isSubmitted}
-                  style={{ cursor: isSubmitted ? 'not-allowed' : 'pointer', margin: 0, verticalAlign: 'middle', width: '10px', height: '10px' }}
-                />
-              </label>
-            </span>
-          );
-        } else {
-          const hl = getReducedHighlightStyle(obj);
-          elements.push(<span key={`red-fb-${path}`} style={hl}>{stripPrimes(obj.get_symbol())}</span>);
-        }
-        idx.current += obj.get_symbol().length;
-      } else if (obj instanceof Lambda) {
-        const paramPath = path ? `${path}.param` : `param-${occurrenceIndex++}`;
-        const bodyPath = path ? `${path}.body` : `body-${occurrenceIndex++}`;
-        idx.current += 1;
-        const lamHl = getReducedHighlightStyle(obj);
-        elements.push(<span key={`red-lam-${path}`} style={{ verticalAlign: 'baseline', ...(lamHl ?? {}) }}>λ</span>);
-        renderRecursive(obj.get_parameter(), paramPath);
-        idx.current += 1;
-        const dotHl = getReducedHighlightStyle(obj);
-        elements.push(<span key={`red-dot-${path}`} style={{ verticalAlign: 'baseline', ...(dotHl ?? {}) }}>.</span>);
-        renderRecursive(obj.get_body(), bodyPath);
-      } else if (obj instanceof Application) {
-        const leftNeedsParens = obj.get_left() instanceof Lambda;
-        const rightNeedsParens = obj.get_right() instanceof Application || (obj.get_right() instanceof Lambda && obj.get_parent() instanceof Application && (obj.get_parent() as Application).get_left() === obj);
-        const leftPath = path ? `${path}.left` : `left-${occurrenceIndex++}`;
-        const rightPath = path ? `${path}.right` : `right-${occurrenceIndex++}`;
-        const appHl = getReducedHighlightStyle(obj);
-        const pushParen = (key: string, char: string) => {
-          const pos = idx.current++;
-          const pairId = reducedParenPairMap.get(pos);
-          const color = pairId !== undefined ? PAREN_COLORS[pairId % PAREN_COLORS.length] : undefined;
-          elements.push(
-            <span
-              key={key}
-              style={{
-                verticalAlign: 'baseline',
-                ...(appHl ?? {}),
-                ...(color ? { color, fontWeight: 'bold' as const } : {}),
-              }}
-            >
-              {char}
-            </span>
-          );
-        };
-        if (leftNeedsParens) pushParen(`red-lp-${path}`, '(');
-        renderRecursive(obj.get_left(), leftPath);
-        if (leftNeedsParens) pushParen(`red-rp-${path}`, ')');
-        idx.current += 1;
-        elements.push(<span key={`red-sp-${path}`}> </span>);
-        if (rightNeedsParens) pushParen(`red-lp2-${path}`, '(');
-        renderRecursive(obj.get_right(), rightPath);
-        if (rightNeedsParens) pushParen(`red-rp2-${path}`, ')');
-      }
-    };
-    renderRecursive(reducedExpression, '');
-    return elements;
-  };
-
   const renderExpression = () => (
     <>
       {renderOriginalExpression()}
-      <span style={{ display: 'block', marginTop: '4px' }}>{renderReducedExpression()}</span>
     </>
   );
 
@@ -688,10 +543,28 @@ export const AlphaRenameLesson: React.FC<{
       <div style={{ marginBottom: '20px', color: '#666' }}>
         <p style={{ marginBottom: '8px' }}><strong>How this connects to lambda calculus:</strong></p>
         <ul style={{ margin: '0 0 0 20px', padding: 0 }}>
-          <li>Alpha renaming changes bound variable names without changing meaning.</li>
-          <li>It is used during beta reduction to avoid variable capture.</li>
-          <li>Top line: original expression (green marks the redex).</li>
-          <li>Bottom line: reduced expression; select variables that were renamed.</li>
+          <li>
+            <strong>Alpha renaming</strong> (α-renaming) changes the <em>names</em> you see inside a λ, but it does <strong>not</strong> change the meaning.
+          </li>
+          <li>
+            It is needed because when we substitute (beta reduction), a name clash can make variables “switch meaning”.
+            When the argument uses a name that already exists inside the redex, we rename one of the λ’s first.
+          </li>
+          <li>
+            <strong>What you practice here:</strong> choose the λ-parts inside the highlighted redex that must be renamed to avoid that kind of mistake.
+          </li>
+          <li>
+            <strong>How to answer:</strong> On the <strong>top line</strong>, the next β-redex is highlighted in green.
+            Use the checkboxes inside that redex to select exactly the λ-parts that need renaming.
+          </li>
+          <li>
+            <strong>Example idea:</strong> In <code>(λx. λy. x y) y</code>, the argument is <code>y</code>.
+            If we substitute without renaming, that <code>y</code> ends up under the inner <code>λy</code> and means something else.
+            So we rename the inner λ first: <code>λy</code> → <code>λy'</code>.
+          </li>
+          <li>
+            You only need to answer using the highlighted redex on the top line.
+          </li>
         </ul>
       </div>
       <p style={{ marginBottom: '16px', fontSize: '13px', color: '#666' }}>
@@ -709,10 +582,6 @@ export const AlphaRenameLesson: React.FC<{
           <p style={{ marginBottom: '6px' }}><strong>Original:</strong></p>
           <div style={{ fontFamily: 'monospace', fontSize: '16px', lineHeight: '1.6', whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginBottom: '12px' }}>
             {renderStringWithColoredParens(res.questionStr, { keyPrefix: `alpha-prev-orig-${idx}` })}
-          </div>
-          <p style={{ marginBottom: '6px' }}><strong>Reduced:</strong></p>
-          <div style={{ fontFamily: 'monospace', fontSize: '16px', lineHeight: '1.6', whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginBottom: '8px' }}>
-            {renderStringWithColoredParens(res.reducedDisplayStr, { keyPrefix: `alpha-prev-red-${idx}` })}
           </div>
           <p style={{ margin: 0 }}>
             {res.isCorrect ? (
@@ -745,7 +614,7 @@ export const AlphaRenameLesson: React.FC<{
           
           <div style={{ marginBottom: '20px' }}>
             <p>
-              <strong>Selected lambdas:</strong> {selectedOccurrences.size}
+              <strong>Selected λ's to rename:</strong> {selectedOccurrences.size}
             </p>
             {isSubmitted && isCorrect !== null && (
               <p style={{ marginTop: '10px' }}>

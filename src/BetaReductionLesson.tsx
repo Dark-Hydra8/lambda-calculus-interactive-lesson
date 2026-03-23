@@ -548,10 +548,25 @@ export const BetaReductionLesson: React.FC<{
       <div style={{ marginBottom: '20px', color: '#333' }}>
         <p style={{ marginBottom: '8px' }}><strong>How this connects to lambda calculus:</strong></p>
         <ul style={{ margin: '0 0 0 20px', padding: 0 }}>
-          <li>Beta reduction uses the rule <strong>(λx.t) u → t[x := u]</strong>.</li>
-          <li>Only occurrences bound by that lambda parameter are replaced.</li>
-          <li>Drag (or click) to mark where the argument should be substituted.</li>
-          <li>Submit when your selected replacement positions are complete.</li>
+          <li>
+            Beta reduction uses the rule <strong>(λx.t) u → t[x := u]</strong>.
+            This means: wherever <code>x</code> appears in <code>t</code> because this particular <code>λx</code> is controlling it, replace that <code>x</code> with <code>u</code>.
+          </li>
+          <li>
+            If an <code>x</code> is controlled by a different <code>λ</code>, it is <strong>not</strong> replaced in this step.
+          </li>
+          <li>
+            In the question, the current β-redex is highlighted:
+            <span style={{ fontFamily: 'monospace' }}>λx</span> (blue), <span style={{ fontFamily: 'monospace' }}>t</span> (green), and <span style={{ fontFamily: 'monospace' }}>u</span> (red/oranged token).
+          </li>
+          <li>
+            Your task is to select every variable occurrence in <code>t</code> that represents a “where <code>x</code> should be replaced by <code>u</code>”.
+            Drag/click interactions mark those replacement sites.
+          </li>
+          <li>
+            Submit when you have selected all replacement sites for this one redex.
+            (After that, the lesson proceeds to the next redex in normal order.)
+          </li>
         </ul>
       </div>
       <p style={{ marginBottom: '16px', fontSize: '13px', color: '#666' }}>

@@ -122,11 +122,25 @@ export const ApplicationLesson: React.FC<{
     correctApplications: ApplicationRange[];
     isCorrect: boolean;
   }>>([]);
-  const instructionPoints = [
-    'An application has the form M N (function M applied to argument N).',
-    'Expressions can contain nested applications; for example, x y z has two applications.',
-    'Highlight one application at a time, then click Confirm Selection.',
-    'Submit after you have confirmed all applications in the expression.',
+  const instructionPoints: React.ReactNode[] = [
+    <>
+      An <strong>application</strong> in λ-calculus has the shape <code>M N</code> (“apply function <code>M</code> to argument <code>N</code>”).
+    </>,
+    <>
+      Applications associate to the left. For example, <code>x y z</code> means <code>(x y) z</code>.
+    </>,
+    <>
+      In this lesson we highlight <strong>useful applications</strong>: applications where the <strong>left part is not itself an application</strong>.
+      <div style={{ marginTop: '6px', fontFamily: 'monospace' }}>
+        Example: in <code>x y z</code>, the useful application is <code>x y</code> (but <code>(x y) z</code> is not counted because its left part is an application).
+      </div>
+    </>,
+    <>
+      Choose one useful application by selecting the exact text for <code>M N</code>, then click <strong>Confirm Selection</strong>.
+    </>,
+    <>
+      Repeat until you have confirmed <strong>all</strong> useful applications in the expression, then press <strong>Submit</strong>.
+    </>,
   ];
   const textRef = useRef<HTMLDivElement>(null);
   const isProcessingRef = useRef(false);
@@ -609,7 +623,7 @@ export const ApplicationLesson: React.FC<{
       <div style={{ marginBottom: '20px' }}>
         <button onClick={onBack} style={{ marginBottom: '10px' }}>← Back to Menu</button>
       </div>
-      <h1>Identfy Useful Applications</h1>
+      <h1>Identify Useful Applications</h1>
       <div style={{ marginBottom: '20px', color: '#333' }}>
         <p style={{ marginBottom: '8px' }}><strong>How this connects to lambda calculus:</strong></p>
         <ul style={{ margin: '0 0 0 20px', padding: 0 }}>

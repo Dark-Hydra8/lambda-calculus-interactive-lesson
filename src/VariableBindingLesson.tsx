@@ -505,10 +505,23 @@ export const VariableBindingLesson: React.FC<{
       <div style={{ marginBottom: '20px', color: '#333' }}>
         <p style={{ marginBottom: '8px' }}><strong>How this connects to lambda calculus:</strong></p>
         <ul style={{ margin: '0 0 0 20px', padding: 0 }}>
-          <li>Each lambda introduces a binder for its parameter (shown as λ₁, λ₂, ...).</li>
-          <li>A variable occurrence is bound by the nearest matching lambda around it.</li>
-          <li>If no matching binder exists, the variable is free.</li>
-          <li>Use the dropdown on each variable to choose its binder or "free variable".</li>
+          <li>
+            Each λ-abstraction <strong>λx. M</strong> gives the name <code>x</code> to some variables inside its body.
+            Informally: inside <code>M</code>, the <code>x</code>’s you see might belong to this λ.
+          </li>
+          <li>
+            A variable occurrence is <strong>bound</strong> by the closest (most nearby) λ that uses the same name.
+            If there is another λ with the same name inside, the inner one takes over for that inner part.
+          </li>
+          <li>
+            If there is no such nearby λ, the occurrence is a <strong>free variable</strong>.
+          </li>
+          <li>
+            In this lesson, every λ is labeled with a small index (λ₁, λ₂, …). On each variable occurrence, use the dropdown to choose which λ it belongs to, or select <strong>free variable</strong>.
+          </li>
+          <li>
+            Parameters themselves are not “bound to something else” (they are the binders), so you only choose dropdown values on variable occurrences, not on the λ-parameters.
+          </li>
         </ul>
       </div>
       <p style={{ marginBottom: '16px', fontSize: '13px', color: '#666' }}>
