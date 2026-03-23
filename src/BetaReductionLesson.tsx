@@ -104,7 +104,7 @@ export const BetaReductionLesson: React.FC<{
     } else if (redex !== null) {
       redex.reduce();
     } else {
-      throw new Error("inital statement has no redex");
+      throw new Error("initial statement has no redex");
     }
     if (redex !== null) {
       questions.push({question, questionStr: String(question), answer, answerStr: String(answer)});

@@ -88,7 +88,7 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
     <>
       Congradulations! You have finished this task! <br />
       You can move onto the next one or keep going! <br />
-      If you have finished all tasks, it would be greatly appritiated if you took the ending servey!
+      If you have finished all tasks, it would be greatly appreciated if you took the ending survey!
     </>
   );
   const completionMessage = (lessonId: LessonId) =>
@@ -190,7 +190,7 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
       <div className="container">
         <h1>Lambda Calculus Interactive Lessons</h1>
         <p style={{ marginBottom: '18px', color: '#666' }}>
-          Taking this before servey would be greatly appritiated!
+          Taking this survey would be greatly appreciated!
         </p>
         <div style={{ marginBottom: '24px' }}>
           <button
@@ -198,10 +198,10 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
               window.open(surveyUrl, '_blank', 'noopener,noreferrer');
             }}
           >
-            Take starting servey
+            Take starting survey
           </button>
         </div>
-        <button onClick={() => setHasFinishedSurvey(true)}>Finished with servey</button>
+        <button onClick={() => setHasFinishedSurvey(true)}>Finished with survey</button>
       </div>
     );
   }
@@ -231,7 +231,7 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
           }}
           style={{ fontSize: '18px', padding: '12px 24px' }}
         >
-          Take ending servey
+          Take ending survey
         </button>
       </div>
 

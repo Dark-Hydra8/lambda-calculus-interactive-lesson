@@ -454,7 +454,7 @@ export class Application extends LambdaTree {
 
 	public reduce() : LambdaObject {
 		if (!(this.left instanceof Lambda)) {
-			throw new Error("Attempted to reduce a non redux");
+			throw new Error("Attempted to reduce a non redex");
 		}
 		let t_prime = this.left.call(this.right);
 		if (this.parent !== null) {
