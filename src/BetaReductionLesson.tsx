@@ -549,8 +549,8 @@ export const BetaReductionLesson: React.FC<{
         <p style={{ marginBottom: '8px' }}><strong>How this connects to lambda calculus:</strong></p>
         <ul style={{ margin: '0 0 0 20px', padding: 0 }}>
           <li>
-            Beta reduction uses the rule <strong>(λx.t) u → t[x := u]</strong>.
-            This means: wherever <code>x</code> appears in <code>t</code> because this particular <code>λx</code> is controlling it, replace that <code>x</code> with <code>u</code>.
+            Beta reduction means: <strong>apply <code>λx.t</code> to <code>u</code> by replacing each <code>x</code> in <code>t</code> with <code>u</code>.</strong>{' '}
+            This means: wherever x appears in t if x is bound to that lambda function, replace that x with u.
           </li>
           <li>
             If an <code>x</code> is controlled by a different <code>λ</code>, it is <strong>not</strong> replaced in this step.
@@ -561,10 +561,10 @@ export const BetaReductionLesson: React.FC<{
           </li>
           <li>
             Your task is to select every variable occurrence in <code>t</code> that represents a “where <code>x</code> should be replaced by <code>u</code>”.
-            Drag/click interactions mark those replacement sites.
+            Click and drag the red argument box at the bottom to the variables that need to be replaced in the function body.
           </li>
           <li>
-            Submit when you have selected all replacement sites for this one redex.
+            Submit when you have replaced all variables to reduce this one redex.
             (After that, the lesson proceeds to the next redex in normal order.)
           </li>
         </ul>
@@ -645,13 +645,13 @@ export const BetaReductionLesson: React.FC<{
               minHeight: '60px',
             }}
           >
-            <p style={{ marginBottom: '8px', fontSize: '14px', color: '#666' }}><strong>Reduce:</strong></p>
+            <p style={{ marginBottom: '8px', fontSize: '14px', color: '#666' }}><strong>Reduce this function:</strong></p>
             <div style={{ marginBottom: '12px' }}>
               {renderExpressionWithMainRedexHighlights(questions[currentIndex].question)}
             </div>
 
             <div style={{ marginBottom: '12px' }}>
-              <p style={{ marginBottom: '4px', fontSize: '14px', color: '#666' }}><strong>Function body (drag argument onto variable candidates):</strong></p>
+              <p style={{ marginBottom: '4px', fontSize: '14px', color: '#666' }}><strong>Function body (drag the argument onto a variable to replace it):</strong></p>
               <div
                 style={{
                   padding: '10px 12px',

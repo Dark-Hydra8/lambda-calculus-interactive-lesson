@@ -40,6 +40,22 @@ export const InfoMenu: React.FC = () => {
         </div>
 
         <div style={{ marginBottom: '10px' }}>
+          <strong>1.5) Quick vocabulary (function, parameter, body, argument)</strong>
+          <div style={{ marginTop: '6px' }}>
+            In <code>(λx.t) u</code>:
+          </div>
+          <div style={{ marginTop: '6px' }}>
+            <div>• <strong>Lambda function</strong>: <code>λx.t</code> (the function rule)</div>
+            <div>• <strong>Parameter</strong>: <code>x</code> (the input name for that function)</div>
+            <div>• <strong>Function body</strong>: <code>t</code> (the expression where that input name can appear)</div>
+            <div>• <strong>Argument</strong>: <code>u</code> (the value/expression you plug into the function)</div>
+          </div>
+          <div style={{ marginTop: '6px' }}>
+            Think of it as: “apply function <code>λx.t</code> to argument <code>u</code>.”
+          </div>
+        </div>
+
+        <div style={{ marginBottom: '10px' }}>
           <strong>2) Parentheses / reading applications</strong>
           <div style={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap', marginTop: '6px' }}>
             {'M N P'} means {'(M N) P'} (application associates to the left).

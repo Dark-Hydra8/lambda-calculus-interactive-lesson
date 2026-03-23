@@ -212,11 +212,14 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
       <p style={{ marginBottom: '10px', fontSize: '14px', color: '#666' }}>
         User id: <strong>{identity?.userId ?? '—'}</strong>
       </p>
+      <p style={{ marginBottom: '12px', color: '#444' }}>
+        <strong>Start here:</strong> open the Info menu (the <code>?</code> button) before anything else.
+      </p>
       <div style={{ marginBottom: '18px', color: '#555' }}>
         <p style={{ marginBottom: '8px' }}><strong>How to navigate this website:</strong></p>
         <ul style={{ margin: '0 0 0 20px', padding: 0 }}>
+          <li>Before anything else, open the Info menu (the <code>?</code> button) and read the general guidance.</li>
           <li>Pick a lesson using the cards below (each one practices a single skill).</li>
-          <li>Read the general information in the Info menu (the ? button) if you want quick definitions and examples.</li>
           <li>Use the Help/Info panel (the ? button) in the top right the lesson content whenever you need a reminder.</li>
           <li>In a lesson, focus on the highlighted part on the page, choose what the lesson asks for, then click <code>Submit</code>.</li>
           <li>If you get stuck, click <code>Show Answer</code>, then continue with <code>Next Question</code>.</li>
@@ -257,13 +260,13 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
         <div className="lesson-card" onClick={() => setCurrentLesson('normal-order')}>
           <h2>Beta Reduction {hasLessonCheck('normal-order') ? '✅' : ''}</h2>
           <p>
-            Practice β-reduction by selecting which occurrences of the redex’s parameter get replaced by the argument. The app highlights the current redex and guides you through the substitution.
+            Practice β-reduction by dragging the argument onto variables that should be replaced in the highlighted redex. Submit after you have marked all replacements for that step.
           </p>
         </div>
         <div className="lesson-card" onClick={() => setCurrentLesson('alpha-rename')}>
           <h2>Alpha Renaming {hasLessonCheck('alpha-rename') ? '✅' : ''}</h2>
           <p>
-            Learn α-renaming (changing the names of bound variables inside a λ without changing meaning). You will rename λ-parts inside the highlighted redex so the next substitution doesn’t accidentally change the meaning of variables.
+            Learn α-renaming (changing bound variable names without changing meaning). You will use checkboxes in the highlighted redex to pick which variable needs renaming before substitution.
           </p>
         </div>
       </div>

@@ -554,8 +554,8 @@ export const AlphaRenameLesson: React.FC<{
             <strong>What you practice here:</strong> choose the λ-parts inside the highlighted redex that must be renamed to avoid that kind of mistake.
           </li>
           <li>
-            <strong>How to answer:</strong> On the <strong>top line</strong>, the next β-redex is highlighted in green.
-            Use the checkboxes inside that redex to select exactly the λ-parts that need renaming.
+            <strong>How to answer:</strong> Below there is a β-redex highlighted in green.
+            Use the checkboxes inside that redex to select the variable that need renaming.
           </li>
           <li>
             <strong>Example idea:</strong> In <code>(λx. λy. x y) y</code>, the argument is <code>y</code>.

@@ -136,7 +136,7 @@ export const ApplicationLesson: React.FC<{
       </div>
     </>,
     <>
-      Choose one useful application by selecting the exact text for <code>M N</code>, then click <strong>Confirm Selection</strong>.
+      Choose one useful application by highighting the exact text for <code>M N</code>, then click <strong>Confirm Selection</strong>.
     </>,
     <>
       Repeat until you have confirmed <strong>all</strong> useful applications in the expression, then press <strong>Submit</strong>.

@@ -682,7 +682,7 @@ export const RedexHighlightLesson: React.FC<{
             <code>(λy. y) z</code> (inside) and <code>(λx. x) ((λy. y) z)</code> (outside).
           </li>
           <li>
-            In each question, select text that covers each redex exactly, then click <strong>Confirm Selection</strong>.
+            In each question, highlight text that covers each redex exactly, then click <strong>Confirm Selection</strong>.
           </li>
           <li>
             When you have confirmed <strong>every</strong> redex in the expression, press <strong>Submit</strong>.
