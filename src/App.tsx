@@ -25,6 +25,7 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
   const [currentLesson, setCurrentLesson] = useState<Lesson>('menu');
   const [hasFinishedSurvey, setHasFinishedSurvey] = useState(false);
   const [answeredCorrectByLesson, setAnsweredCorrectByLesson] = useState<Partial<Record<LessonId, number>>>({});
+  const [lessonProgressReady, setLessonProgressReady] = useState(() => !isSupabaseConfigured());
 
   const surveyUrl = `https://docs.google.com/forms/d/e/1FAIpQLSeL7gId09NUjrUHAmzw_4Utz9gTNHHMMF-8NweXYCIbPiGbpw/viewform?usp=pp_url&entry.1056977610=${encodeURIComponent(
     identity?.userId ?? ''
@@ -66,8 +67,14 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
 
     const loadProgress = async () => {
       if (!identity || identityLoading) return;
+      if (!isSupabaseConfigured()) {
+        setLessonProgressReady(true);
+        return;
+      }
       const { data, error } = await getLessonProgress(identity.userId, identity.authToken);
-      if (cancelled || error || !data) return;
+      if (cancelled) return;
+      setLessonProgressReady(true);
+      if (error || !data) return;
 
       const next: Partial<Record<LessonId, number>> = {};
       for (const row of data) {
@@ -110,10 +117,20 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
     </>
   );
 
+  if (!identity) {
+    return withLayout(
+      <div className="container">
+        <p>Loading identity...</p>
+      </div>
+    );
+  }
+
   if (currentLesson === 'normal-order') {
     return withLayout(
       <>
         <BetaReductionLesson
+          userId={identity.userId}
+          authToken={identity.authToken}
           onBack={() => setCurrentLesson('menu')}
           onSubmit={() => recordSubmit('normal-order')}
           onAnsweredCorrect={() => recordAnswered('normal-order')}
@@ -129,6 +146,8 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
     return withLayout(
       <>
         <RedexHighlightLesson
+          userId={identity.userId}
+          authToken={identity.authToken}
           onBack={() => setCurrentLesson('menu')}
           onSubmit={() => recordSubmit('redex-highlight')}
           onAnsweredCorrect={() => recordAnswered('redex-highlight')}
@@ -144,6 +163,8 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
     return withLayout(
       <>
         <AlphaRenameLesson
+          userId={identity.userId}
+          authToken={identity.authToken}
           onBack={() => setCurrentLesson('menu')}
           onSubmit={() => recordSubmit('alpha-rename')}
           onAnsweredCorrect={() => recordAnswered('alpha-rename')}
@@ -159,6 +180,8 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
     return withLayout(
       <>
         <ApplicationLesson
+          userId={identity.userId}
+          authToken={identity.authToken}
           onBack={() => setCurrentLesson('menu')}
           onSubmit={() => recordSubmit('application')}
           onAnsweredCorrect={() => recordAnswered('application')}
@@ -174,6 +197,8 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
     return withLayout(
       <>
         <VariableBindingLesson
+          userId={identity.userId}
+          authToken={identity.authToken}
           onBack={() => setCurrentLesson('menu')}
           onSubmit={() => recordSubmit('variable-binding')}
           onAnsweredCorrect={() => recordAnswered('variable-binding')}
@@ -206,11 +231,19 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
     );
   }
 
+  if (!lessonProgressReady && isSupabaseConfigured()) {
+    return withLayout(
+      <div className="container">
+        <p>Loading progress...</p>
+      </div>
+    );
+  }
+
   return withLayout(
     <div className="container">
       <h1>Lambda Calculus Interactive Lessons</h1>
       <p style={{ marginBottom: '10px', fontSize: '14px', color: '#666' }}>
-        User id: <strong>{identity?.userId ?? '—'}</strong>
+        User id: <strong>{identity.userId}</strong>
       </p>
       <p style={{ marginBottom: '12px', color: '#444' }}>
         <strong>Start here:</strong> open the Info menu (the <code>?</code> button) before anything else.

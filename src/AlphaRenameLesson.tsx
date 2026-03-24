@@ -5,6 +5,7 @@ import { getParenPairMap, PAREN_COLORS, renderStringWithColoredParens } from './
 import { random_with_unique_lambdas, random_variable } from './random_lambda';
 import { difference } from './SetOperations';
 import { Parser } from './parser';
+import { EASY, getDifficultyLevel, HARD, type DifficultyLevel } from './api/lessonProgress';
 
 type Question = {
   question: LambdaObject;
@@ -86,10 +87,13 @@ function parameter_count(redex: Application): number {
 }
 
 // Generate a lambda expression with exactly one redex
-function new_question(): Application {
+export function new_question(level: DifficultyLevel): Application {
+  // Depth 9 (7 + HARD) often thrashes in the acceptance loop; cap HARD at 8 like MEDIUM for reliable latency.
+  const caseMax = level === EASY ? 3 : 6;
+  const maxLength = level === HARD ? 40 : 50;
   let is_accepted: (lambda_object: Application) => boolean;
   const base_vars = new Set(['v', 'w', 'x', 'y', 'z']);
-  switch (Math.floor(6 * Math.random())) {
+  switch (Math.floor(caseMax * Math.random())) {
     case 0: // Short argument with no renaming
       is_accepted = (lambda_object: Application) => {
         const length = String(lambda_object).length;
@@ -98,7 +102,7 @@ function new_question(): Application {
         const param_count = parameter_count(lambda_object);
         const depth = max_redex_parameter_lambda_depth(lambda_object);
         const reduced_length = String(norm_ord_reduce(lambda_object.copy())).length;
-        const accepted = length < 45 && param_count > 0 && argument_length < 10 && !renaming && depth >= 3 && reduced_length < 45;
+        const accepted = length < maxLength && param_count > 0 && argument_length < 10 && !renaming && depth >= 3 && reduced_length < 45;
         return accepted;
       };
       break;
@@ -111,7 +115,7 @@ function new_question(): Application {
         const param_count = parameter_count(lambda_object);
         const depth = max_redex_parameter_lambda_depth(lambda_object);
         const reduced_length = String(norm_ord_reduce(lambda_object.copy())).length;
-        const accepted = length < 45 && param_count > 0 && argument_length < 10 && renaming && depth >= 3 && reduced_length < 45;
+        const accepted = length < maxLength && param_count > 0 && argument_length < 10 && renaming && depth >= 3 && reduced_length < 45;
         return accepted;
       };
       break;
@@ -123,7 +127,7 @@ function new_question(): Application {
         const param_count = parameter_count(lambda_object);
         const depth = max_redex_parameter_lambda_depth(lambda_object);
         const reduced_length = String(norm_ord_reduce(lambda_object.copy())).length;
-        const accepted = length < 45 && param_count > 0 && argument_length >= 10 && !renaming && depth >= 3 && reduced_length < 45;
+        const accepted = length < maxLength && param_count > 0 && argument_length >= 10 && !renaming && depth >= 3 && reduced_length < 45;
         return accepted;
       };
       break;
@@ -136,7 +140,7 @@ function new_question(): Application {
         const param_count = parameter_count(lambda_object);
         const depth = max_redex_parameter_lambda_depth(lambda_object);
         const reduced_length = String(norm_ord_reduce(lambda_object.copy())).length;
-        const accepted = length < 45 && param_count > 0 && argument_length >= 10 && renaming && depth >= 3 && reduced_length < 45;
+        const accepted = length < maxLength && param_count > 0 && argument_length >= 10 && renaming && depth >= 3 && reduced_length < 45;
         return accepted;
       };
       break;
@@ -259,11 +263,13 @@ type ResponseRecord = {
 };
 
 export const AlphaRenameLesson: React.FC<{
+  userId: string;
+  authToken: string;
   onBack: () => void;
   onSubmit?: () => void;
   onAnsweredCorrect?: () => void;
   onCorrectWithoutShowAnswer?: () => void;
-}> = ({ onBack, onSubmit, onAnsweredCorrect, onCorrectWithoutShowAnswer }) => {
+}> = ({ userId, authToken, onBack, onSubmit, onAnsweredCorrect, onCorrectWithoutShowAnswer }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOccurrences, setSelectedOccurrences] = useState<Set<string>>(new Set());
   const [showResult, setShowResult] = useState(false);
@@ -275,7 +281,7 @@ export const AlphaRenameLesson: React.FC<{
 
   // Initialize questions
   if (questions.length === 0) {
-    const question = new_question();
+    const question = new_question(getDifficultyLevel(userId, authToken, 'alpha-rename'));
     const redex = question.norm_ord_redex() as Application;
     questions.push({
       question,
@@ -358,7 +364,7 @@ export const AlphaRenameLesson: React.FC<{
     if (isSubmitted && isCorrect !== null) {
       setResponses(prev => [...prev, { questionStr: currentQuestion.questionStr, isCorrect }]);
     }
-    const newQuestion = new_question();
+    const newQuestion = new_question(getDifficultyLevel(userId, authToken, 'alpha-rename'));
     const newRedex = newQuestion.norm_ord_redex() as Application;
     questions.push({
       question: newQuestion,

@@ -4,6 +4,7 @@ import { LambdaObject, Variable, Application, Lambda, norm_ord_reduce, all_varia
 import { random_lambda, random_variable } from './random_lambda';
 import { PAREN_COLORS, renderStringWithColoredParens } from './coloredParens';
 import { difference } from './SetOperations';
+import { EASY, getDifficultyLevel, MEDIUM, type DifficultyLevel } from './api/lessonProgress';
 
 type Question = {
   question: LambdaObject;
@@ -45,7 +46,9 @@ function count_redexes(obj: LambdaObject) : number {
   return redexes;
 }
 
-function new_question() : LambdaObject {
+export function new_question(level: DifficultyLevel): LambdaObject {
+  const maxLength = level === EASY ? 17 : level === MEDIUM ? 22 : 27;
+  const minLength = level === EASY ? 7 : level === MEDIUM ? 12 : 17;
   let param: Variable;
   let body: LambdaObject;
   let argument: LambdaObject;
@@ -67,7 +70,7 @@ function new_question() : LambdaObject {
   } while (
     param_count !== expected_param_count
     || has_renaming
-    || (String(body).length < 10 || String(body).length > 25)
+    || (String(body).length < minLength || String(body).length > maxLength)
     || (String(argument).length < 3 || String(argument).length > 10)
   );
   return redex;
@@ -81,11 +84,13 @@ type SubmitResult = {
 };
 
 export const BetaReductionLesson: React.FC<{
+  userId: string;
+  authToken: string;
   onBack: () => void;
   onSubmit?: () => void;
   onAnsweredCorrect?: () => void;
   onCorrectWithoutShowAnswer?: () => void;
-}> = ({ onBack, onSubmit, onAnsweredCorrect, onCorrectWithoutShowAnswer }) => {
+}> = ({ userId, authToken, onBack, onSubmit, onAnsweredCorrect, onCorrectWithoutShowAnswer }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [responses, setResponses] = useState<Response[]>([]);
   const [showResult, setShowResult] = useState(false);
@@ -96,7 +101,7 @@ export const BetaReductionLesson: React.FC<{
   const [selectedXOccurrences, setSelectedXOccurrences] = useState<Set<string>>(() => new Set());
 
   if (questions.length === 0) {
-    let question = new_question();
+    let question = new_question(getDifficultyLevel(userId, authToken, 'normal-order'));
     let answer = question.copy();
     let redex = answer.norm_ord_redex();
     if (redex === answer) {
@@ -517,7 +522,7 @@ export const BetaReductionLesson: React.FC<{
     setHadShownAnswerForCurrentQuestion(false);
     setSelectedXOccurrences(new Set());
 
-    const question = new_question();
+    const question = new_question(getDifficultyLevel(userId, authToken, 'normal-order'));
     let answer = question.copy();
     let redex = answer.norm_ord_redex();
     if (redex === answer) {

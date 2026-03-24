@@ -4,6 +4,7 @@ import { LambdaObject, Variable, Application, Lambda } from './lambda_ir';
 import { random_lambda } from './random_lambda';
 import { addSpacesAroundParens } from './displayParens';
 import { getParenPairMap, renderSegmentWithColoredParens, PAREN_COLORS } from './coloredParens';
+import { getDifficultyLevel, EASY, MEDIUM, type DifficultyLevel, HARD } from './api/lessonProgress';
 
 type Question = {
   question: LambdaObject;
@@ -74,14 +75,17 @@ function usefulApplicationRanges(question: LambdaObject): ApplicationRange[] {
   return ranges;
 }
 
-function new_question(): LambdaObject {
+export function new_question(level: DifficultyLevel): LambdaObject {
+  const maxApplications = level === EASY ? 4 : level === MEDIUM ? 6 : 8;
+  const minLength = level === EASY ? 3 : level === MEDIUM ? 4 : 5;
+  const depth = level === HARD ? 4 : 3;
   let lambda: LambdaObject;
   do {
-    lambda = random_lambda(['w', 'x', 'y', 'z'], 3);
+    lambda = random_lambda(['w', 'x', 'y', 'z'], depth);
   } while (
-    lambda.toString().replace(/\s/g, '').length < 5 ||
+    lambda.toString().replace(/\s/g, '').length < minLength ||
     countApplications(lambda) < 1 ||
-    countApplications(lambda) >= 8
+    countApplications(lambda) >= maxApplications
   );
   return lambda;
 }
@@ -104,11 +108,13 @@ type ConfirmedSelection = {
 };
 
 export const ApplicationLesson: React.FC<{
+  userId: string;
+  authToken: string;
   onBack: () => void;
   onSubmit?: () => void;
   onAnsweredCorrect?: () => void;
   onCorrectWithoutShowAnswer?: () => void;
-}> = ({ onBack, onSubmit, onAnsweredCorrect, onCorrectWithoutShowAnswer }) => {
+}> = ({ userId, authToken, onBack, onSubmit, onAnsweredCorrect, onCorrectWithoutShowAnswer }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentSelection, setCurrentSelection] = useState<SelectionRange | null>(null);
   const [confirmedSelections, setConfirmedSelections] = useState<ConfirmedSelection[]>([]);
@@ -146,7 +152,7 @@ export const ApplicationLesson: React.FC<{
   const isProcessingRef = useRef(false);
 
   if (questions.length === 0) {
-    const question = new_question();
+    const question = new_question(getDifficultyLevel(userId, authToken, 'application'));
     questions.push({ question, questionStr: String(question) });
   }
 
@@ -289,7 +295,7 @@ export const ApplicationLesson: React.FC<{
       setShowAnswers(false);
       setIsSubmitted(false);
     } else {
-      const newQuestion = new_question();
+      const newQuestion = new_question(getDifficultyLevel(userId, authToken, 'application'));
       questions.push({ question: newQuestion, questionStr: String(newQuestion) });
       setCurrentIndex(currentIndex + 1);
       setConfirmedSelections([]);

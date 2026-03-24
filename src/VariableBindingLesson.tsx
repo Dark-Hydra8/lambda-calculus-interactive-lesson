@@ -3,6 +3,7 @@ import './styles.css';
 import { LambdaObject, Variable, Application, Lambda } from './lambda_ir';
 import { random_lambda } from './random_lambda';
 import { getParenPairMap, PAREN_COLORS } from './coloredParens';
+import { getDifficultyLevel, type DifficultyLevel } from './api/lessonProgress';
 
 type VariableOccurrence = {
   id: string;
@@ -70,12 +71,13 @@ function findVariableOccurrencesWithBinding(
   }
 }
 
-function newQuestion(): LambdaObject {
+export function new_question(level: DifficultyLevel): LambdaObject {
+  const depth = 4 + level;
   let lambda: LambdaObject;
   let bound_variables: number;
   let total_variables: number;
   do {
-    lambda = random_lambda(['x', 'y', 'z'], 4);
+    lambda = random_lambda(['x', 'y', 'z'], depth);
     let variables = lambda.all_variables();
     variables = variables.filter((v) => !v.is_parameter());
     total_variables = variables.length;
@@ -227,12 +229,16 @@ function PreviousQuestionItem({ response, index }: { response: ResponseRecord; i
 }
 
 export const VariableBindingLesson: React.FC<{
+  userId: string;
+  authToken: string;
   onBack: () => void;
   onSubmit?: () => void;
   onAnsweredCorrect?: () => void;
   onCorrectWithoutShowAnswer?: () => void;
-}> = ({ onBack, onSubmit, onAnsweredCorrect, onCorrectWithoutShowAnswer }) => {
-  const [question, setQuestion] = useState<LambdaObject>(() => newQuestion());
+}> = ({ userId, authToken, onBack, onSubmit, onAnsweredCorrect, onCorrectWithoutShowAnswer }) => {
+  const [question, setQuestion] = useState<LambdaObject>(() =>
+    new_question(getDifficultyLevel(userId, authToken, 'variable-binding'))
+  );
   const [selections, setSelections] = useState<Record<string, string>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showAnswer, setShowAnswer] = useState(false);
@@ -321,7 +327,7 @@ export const VariableBindingLesson: React.FC<{
         isCorrect: correct,
       },
     ]);
-    setQuestion(newQuestion());
+    setQuestion(new_question(getDifficultyLevel(userId, authToken, 'variable-binding')));
     setSelections({});
     setIsSubmitted(false);
     setShowAnswer(false);
@@ -520,7 +526,7 @@ export const VariableBindingLesson: React.FC<{
             In this lesson, every λ is labeled with a small index (λ₁, λ₂, …). On each variable occurrence, use the dropdown to choose which λ it belongs to, or select <strong>free variable</strong>.
           </li>
           <li>
-            Parameters themselves are not “bound to something else” (they are the binders), so you only choose dropdown values on variable occurrences, not on the λ-parameters.
+            Parameters themselves are not “bound to something else”, so you only choose dropdown values on variable occurrences, not on the λ-parameters.
           </li>
         </ul>
       </div>

@@ -5,6 +5,7 @@ import { random_lambda } from './random_lambda';
 import { Parser } from './parser';
 import { addSpacesAroundParens } from './displayParens';
 import { getParenPairMap, renderSegmentWithColoredParens, renderStringWithColoredParens, PAREN_COLORS } from './coloredParens';
+import { EASY, getDifficultyLevel, MEDIUM, type DifficultyLevel } from './api/lessonProgress';
 
 type Question = {
   question: LambdaObject;
@@ -48,12 +49,13 @@ function positionWithSpaces(text: string, posWithoutSpaces: number): number {
   return pos; // Return end of string if not found
 }
 
-function new_question(): LambdaObject {
+export function new_question(level: DifficultyLevel): LambdaObject {
+  const depth = level === EASY ? 3 : 4;
   let lambda: LambdaObject;
-  let target = Math.floor(2 * Math.random()) + 1;
+  let target = level === EASY ? 1 : level === MEDIUM ? 2 : 3;
   do {
-    lambda = random_lambda(["w", "x", "y", "z"], 3);
-  } while (lambda.redexes().length <= target);
+    lambda = random_lambda(["w", "x", "y", "z"], depth);
+  } while (lambda.redexes().length <= target && String(lambda).length < 40);
   return lambda;
 }
 
@@ -62,11 +64,13 @@ type ConfirmedRedex = {
 };
 
 export const RedexHighlightLesson: React.FC<{
+  userId: string;
+  authToken: string;
   onBack: () => void;
   onSubmit?: () => void;
   onAnsweredCorrect?: () => void;
   onCorrectWithoutShowAnswer?: () => void;
-}> = ({ onBack, onSubmit, onAnsweredCorrect, onCorrectWithoutShowAnswer }) => {
+}> = ({ userId, authToken, onBack, onSubmit, onAnsweredCorrect, onCorrectWithoutShowAnswer }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentSelection, setCurrentSelection] = useState<SelectionRange | null>(null);
   const [confirmedRedexes, setConfirmedRedexes] = useState<ConfirmedRedex[]>([]);
@@ -86,7 +90,7 @@ export const RedexHighlightLesson: React.FC<{
 
   // Initialize questions
   if (questions.length === 0) {
-    const question = new_question();
+    const question = new_question(getDifficultyLevel(userId, authToken, 'redex-highlight'));
     const correctRedexes = question.redexes();
     questions.push({
       question,
@@ -329,7 +333,7 @@ export const RedexHighlightLesson: React.FC<{
       setIsSubmitted(false);
     } else {
       // Generate new question
-      const newQuestion = new_question();
+      const newQuestion = new_question(getDifficultyLevel(userId, authToken, 'redex-highlight'));
       const newCorrectRedexes = newQuestion.redexes();
       questions.push({
         question: newQuestion,
