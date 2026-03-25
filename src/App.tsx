@@ -251,7 +251,7 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
       <div style={{ marginBottom: '18px', color: '#555' }}>
         <p style={{ marginBottom: '8px' }}><strong>How to navigate this website:</strong></p>
         <ul style={{ margin: '0 0 0 20px', padding: 0 }}>
-          <li>Before anything else, open the Info menu (the <code>?</code> button) and read the general guidance.</li>
+          <li>Open the Info menu (the <code>?</code> button) and read the general guidance before you start.</li>
           <li>Pick a lesson using the cards below (each one practices a single skill).</li>
           <li>Use the Help/Info panel (the ? button) in the top right the lesson content whenever you need a reminder.</li>
           <li>In a lesson, focus on the highlighted part on the page, choose what the lesson asks for, then click <code>Submit</code>.</li>
