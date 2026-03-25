@@ -1,6 +1,7 @@
 {
   "name": "lambda-calculus-interactive-lesson",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "dependencies": {
     "@supabase/supabase-js": "^2.98.0",
