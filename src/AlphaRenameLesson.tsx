@@ -5,7 +5,7 @@ import { getParenPairMap, PAREN_COLORS, renderStringWithColoredParens } from './
 import { random_with_unique_lambdas, random_variable } from './random_lambda';
 import { difference } from './SetOperations';
 import { Parser } from './parser';
-import { EASY, getDifficultyLevel, HARD, type DifficultyLevel } from './api/lessonProgress';
+import { EASY, getDifficultyLevel, MEDIUM, HARD, type DifficultyLevel } from './api/lessonProgress';
 
 type Question = {
   question: LambdaObject;
@@ -90,7 +90,7 @@ function parameter_count(redex: Application): number {
 export function new_question(level: DifficultyLevel): Application {
   // Depth 9 (7 + HARD) often thrashes in the acceptance loop; cap HARD at 8 like MEDIUM for reliable latency.
   const caseMax = level === EASY ? 3 : 6;
-  const maxLength = level === HARD ? 40 : 50;
+  const maxLength = level === EASY ? 30 : level === MEDIUM ? 40 : 50;
   let is_accepted: (lambda_object: Application) => boolean;
   const base_vars = new Set(['v', 'w', 'x', 'y', 'z']);
   switch (Math.floor(caseMax * Math.random())) {

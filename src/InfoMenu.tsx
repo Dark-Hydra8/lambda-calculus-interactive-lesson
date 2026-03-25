@@ -47,7 +47,9 @@ export const InfoMenu: React.FC = () => {
           <div style={{ marginTop: '6px' }}>
             <div>• <strong>Lambda function</strong>: <code>λx.t</code> (the function rule)</div>
             <div>• <strong>Parameter</strong>: <code>x</code> (the input name for that function)</div>
-            <div>• <strong>Function body</strong>: <code>t</code> (the expression where that input name can appear)</div>
+            <div>
+              • <strong>Function body</strong>: <code>t</code> (the expression where that input name can appear; it includes everything after <code>λx.</code> until you hit a <code>)</code>—e.g. inside <code>(λx. ... )</code>, the body is everything before the matching closing <code>)</code>)
+            </div>
             <div>• <strong>Argument</strong>: <code>u</code> (the value/expression you plug into the function)</div>
           </div>
           <div style={{ marginTop: '6px' }}>

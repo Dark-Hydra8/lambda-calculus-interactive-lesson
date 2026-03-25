@@ -52,10 +52,17 @@ function positionWithSpaces(text: string, posWithoutSpaces: number): number {
 export function new_question(level: DifficultyLevel): LambdaObject {
   const depth = level === EASY ? 3 : 4;
   let lambda: LambdaObject;
-  let target = level === EASY ? 1 : level === MEDIUM ? 2 : 3;
+  let target = level === EASY ? 1 : 2;
+  let length = level === EASY ? 20 : level == MEDIUM ? 30 : 40;
   do {
     lambda = random_lambda(["w", "x", "y", "z"], depth);
-  } while (lambda.redexes().length <= target && String(lambda).length < 40);
+  } while (
+    !(
+      lambda.redexes().length === target
+      || lambda.redexes().length === target + 1
+    )
+    || String(lambda).length >= length
+  );
   return lambda;
 }
 
@@ -87,6 +94,12 @@ export const RedexHighlightLesson: React.FC<{
   }>>([]);
   const textRef = useRef<HTMLDivElement>(null);
   const isProcessingRef = useRef(false);
+
+  useEffect(() => {
+    if (isSubmitted) {
+      window.getSelection()?.removeAllRanges();
+    }
+  }, [isSubmitted]);
 
   // Initialize questions
   if (questions.length === 0) {
@@ -151,6 +164,7 @@ export const RedexHighlightLesson: React.FC<{
   }, [isSubmitted, confirmedRedexes, redexToRangeMap]);
 
   const handleTextSelection = () => {
+    if (isSubmitted) return;
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
     
@@ -225,7 +239,7 @@ export const RedexHighlightLesson: React.FC<{
   };
 
   const handleConfirmSelection = () => {
-    if (!currentSelection || isProcessingRef.current) return;
+    if (isSubmitted || !currentSelection || isProcessingRef.current) return;
     
     isProcessingRef.current = true;
     
@@ -259,16 +273,19 @@ export const RedexHighlightLesson: React.FC<{
 
 
   const handleClearCurrentSelection = () => {
+    if (isSubmitted) return;
     setCurrentSelection(null);
   };
 
   const handleRemoveConfirmed = (rangeKey: string) => {
+    if (isSubmitted) return;
     setConfirmedRedexes(prev =>
       prev.filter(cr => `${cr.range.start}-${cr.range.end}` !== rangeKey)
     );
   };
 
   const handleClearAll = () => {
+    if (isSubmitted) return;
     setConfirmedRedexes([]);
     setCurrentSelection(null);
   };
@@ -297,6 +314,7 @@ export const RedexHighlightLesson: React.FC<{
 
     if (isCorrect) onAnsweredCorrect?.();
     if (isCorrect && !hadShownAnswerForCurrentQuestion) onCorrectWithoutShowAnswer?.();
+    setCurrentSelection(null);
     setIsSubmitted(true);
   };
 
@@ -729,12 +747,12 @@ export const RedexHighlightLesson: React.FC<{
               fontSize: '18px',
               fontFamily: 'monospace',
               lineHeight: '1.8',
-              userSelect: 'text',
-              cursor: 'text',
+              userSelect: isSubmitted ? 'none' : 'text',
+              cursor: isSubmitted ? 'default' : 'text',
               whiteSpace: 'pre-wrap',
               wordBreak: 'break-word'
             }}
-            onMouseUp={handleMouseUp}
+            onMouseUp={isSubmitted ? undefined : handleMouseUp}
           >
             {renderExpressionWithHighlights()}
           </div>
@@ -775,14 +793,14 @@ export const RedexHighlightLesson: React.FC<{
             <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
               <button
                 onClick={handleConfirmSelection}
-                disabled={!currentSelection}
+                disabled={isSubmitted || !currentSelection}
                 style={{ fontSize: '14px', padding: '6px 12px' }}
               >
                 Confirm Selection
               </button>
               <button
                 onClick={handleClearCurrentSelection}
-                disabled={!currentSelection}
+                disabled={isSubmitted || !currentSelection}
                 style={{ fontSize: '14px', padding: '6px 12px' }}
               >
                 Reset Current Highlight

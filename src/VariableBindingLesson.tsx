@@ -3,7 +3,7 @@ import './styles.css';
 import { LambdaObject, Variable, Application, Lambda } from './lambda_ir';
 import { random_lambda } from './random_lambda';
 import { getParenPairMap, PAREN_COLORS } from './coloredParens';
-import { getDifficultyLevel, type DifficultyLevel } from './api/lessonProgress';
+import { EASY, getDifficultyLevel, MEDIUM, type DifficultyLevel } from './api/lessonProgress';
 
 type VariableOccurrence = {
   id: string;
@@ -72,18 +72,25 @@ function findVariableOccurrencesWithBinding(
 }
 
 export function new_question(level: DifficultyLevel): LambdaObject {
-  const depth = 4 + level;
+  let bound_var_count = level === EASY ? 2 : level === MEDIUM ? 3 : 4;
+  let length = level === EASY ? 40 : level == MEDIUM ? 50 : 60;
   let lambda: LambdaObject;
   let bound_variables: number;
   let total_variables: number;
   do {
-    lambda = random_lambda(['x', 'y', 'z'], depth);
+    lambda = random_lambda(['x', 'y', 'z'], 4);
     let variables = lambda.all_variables();
     variables = variables.filter((v) => !v.is_parameter());
     total_variables = variables.length;
     variables = variables.filter((v) => v.get_bound_lambda() !== null);
     bound_variables = variables.length;
-  } while (bound_variables < 3 || String(lambda).length > 50 || total_variables > 7 || bound_variables / total_variables < 0.25 || bound_variables / total_variables > 0.95);
+  } while (
+    bound_variables < bound_var_count
+    || String(lambda).length > length
+    || total_variables > 7
+    || bound_variables / total_variables < 0.25
+    || bound_variables / total_variables > 0.95
+  );
   // console.log(bound_variables, total_variables, bound_variables / total_variables);
   return lambda;
 }
