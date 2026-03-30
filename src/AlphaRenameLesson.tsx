@@ -90,7 +90,7 @@ function parameter_count(redex: Application): number {
 export function new_question(level: DifficultyLevel): Application {
   // Depth 9 (7 + HARD) often thrashes in the acceptance loop; cap HARD at 8 like MEDIUM for reliable latency.
   const caseMax = level === EASY ? 3 : 6;
-  const maxLength = level === EASY ? 30 : level === MEDIUM ? 40 : 50;
+  const maxLength = level === EASY ? 20 : level === MEDIUM ? 35 : 50;
   let is_accepted: (lambda_object: Application) => boolean;
   const base_vars = new Set(['v', 'w', 'x', 'y', 'z']);
   switch (Math.floor(caseMax * Math.random())) {
@@ -560,8 +560,8 @@ export const AlphaRenameLesson: React.FC<{
             <strong>What you practice here:</strong> choose the λ-parts inside the highlighted redex that must be renamed to avoid that kind of mistake.
           </li>
           <li>
-            <strong>How to answer:</strong> Below there is a β-redex highlighted in green.
-            Use the checkboxes inside that redex to select the variable that need renaming.
+            <strong>How to answer:</strong> Below there is a β-redex highlighted: function/parameter (blue), body (green), and argument (red). 
+            Use the checkboxes inside that redex to select the variable that needs renaming.
           </li>
           <li>
             <strong>Example idea:</strong> In <code>(λx. λy. x y) y</code>, the argument is <code>y</code>.
@@ -659,7 +659,7 @@ export const AlphaRenameLesson: React.FC<{
       ) : (
         <div>
           <h2>Finished!</h2>
-          <p>You've completed all questions. Great job!</p>
+          <p>You've completed all questions. Good Job!</p>
         </div>
       )}
     </div>

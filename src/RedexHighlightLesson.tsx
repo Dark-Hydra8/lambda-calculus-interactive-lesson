@@ -839,7 +839,7 @@ export const RedexHighlightLesson: React.FC<{
       ) : (
         <div>
           <h2>Finished!</h2>
-          <p>You've completed all questions. Great job identifying redexes!</p>
+          <p>You've completed all questions. Good Job!</p>
         </div>
       )}
     </div>

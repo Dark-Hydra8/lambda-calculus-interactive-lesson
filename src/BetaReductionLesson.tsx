@@ -127,15 +127,25 @@ export const BetaReductionLesson: React.FC<{
   const T_STYLE: React.CSSProperties = { backgroundColor: T_BG, padding: '0 2px', borderRadius: '4px', display: 'inline-block', lineHeight: '1.2' };
   const TPRIME_STYLE: React.CSSProperties = { backgroundColor: TPRIME_BG, padding: '0 2px', borderRadius: '4px', display: 'inline-block', lineHeight: '1.2' };
 
+  // Parentheses are colored by nesting depth. For this lesson, we drop the orange
+  // entry so you don't see the same color at multiple depths due to cycling.
+  const REDUCTION_PAREN_COLORS = PAREN_COLORS.filter(c => c !== '#FF9800');
+
   const renderExpressionWithMainRedexHighlights = (obj: LambdaObject) => {
     const redex = obj.norm_ord_redex();
     if (redex === null || !(redex instanceof Application)) {
-      return renderStringWithColoredParens(String(obj), { keyPrefix: 'beta-hl-fallback' });
+      return renderStringWithColoredParens(String(obj), {
+        keyPrefix: 'beta-hl-fallback',
+        colors: REDUCTION_PAREN_COLORS,
+      });
     }
 
     const lambdaNode = redex.get_left();
     if (!(lambdaNode instanceof Lambda)) {
-      return renderStringWithColoredParens(String(obj), { keyPrefix: 'beta-hl-fallback' });
+      return renderStringWithColoredParens(String(obj), {
+        keyPrefix: 'beta-hl-fallback',
+        colors: REDUCTION_PAREN_COLORS,
+      });
     }
 
     const paramNode = lambdaNode.get_parameter();
@@ -145,7 +155,7 @@ export const BetaReductionLesson: React.FC<{
     let parenDepth = 0;
     const renderParen = (char: '(' | ')') => {
       if (char === '(') {
-        const color = PAREN_COLORS[parenDepth % PAREN_COLORS.length];
+        const color = REDUCTION_PAREN_COLORS[parenDepth % REDUCTION_PAREN_COLORS.length];
         parenDepth += 1;
         return (
           <span key={`popen-${parenDepth}`} style={{ color }}>
@@ -154,7 +164,7 @@ export const BetaReductionLesson: React.FC<{
         );
       }
       parenDepth -= 1;
-      const color = PAREN_COLORS[parenDepth % PAREN_COLORS.length];
+      const color = REDUCTION_PAREN_COLORS[parenDepth % REDUCTION_PAREN_COLORS.length];
       return (
         <span key={`pclose-${parenDepth}`} style={{ color }}>
           )
@@ -344,7 +354,7 @@ export const BetaReductionLesson: React.FC<{
     let parenKey = 0;
     const renderParen = (char: '(' | ')') => {
       if (char === '(') {
-        const color = PAREN_COLORS[parenDepth % PAREN_COLORS.length];
+        const color = REDUCTION_PAREN_COLORS[parenDepth % REDUCTION_PAREN_COLORS.length];
         parenDepth += 1;
         parenKey += 1;
         return (
@@ -354,7 +364,7 @@ export const BetaReductionLesson: React.FC<{
         );
       }
       parenDepth -= 1;
-      const color = PAREN_COLORS[parenDepth % PAREN_COLORS.length];
+      const color = REDUCTION_PAREN_COLORS[parenDepth % REDUCTION_PAREN_COLORS.length];
       parenKey += 1;
       return (
         <span key={`beta-paren-${parenKey}`} style={{ color, fontWeight: 'bold' }}>
@@ -398,7 +408,7 @@ export const BetaReductionLesson: React.FC<{
 
         const replacementInner = renderStringWithColoredParens(
           String(betaStep.tPrimeNode),
-          { keyPrefix: `beta-inline-repl-${path}` }
+          { keyPrefix: `beta-inline-repl-${path}`, colors: REDUCTION_PAREN_COLORS }
         );
         const replacementText = replacementNeedsParens ? (
           <>
@@ -562,7 +572,7 @@ export const BetaReductionLesson: React.FC<{
           </li>
           <li>
             In the question, the current β-redex is highlighted:
-            <span style={{ fontFamily: 'monospace' }}>λx</span> (blue), <span style={{ fontFamily: 'monospace' }}>t</span> (green), and <span style={{ fontFamily: 'monospace' }}>u</span> (red/oranged token).
+            <span style={{ fontFamily: 'monospace' }}>λx</span> (blue), <span style={{ fontFamily: 'monospace' }}>t</span> (green), and <span style={{ fontFamily: 'monospace' }}>u</span> (red token).
           </li>
           <li>
             Your task is to select every variable occurrence in <code>t</code> that represents a “where <code>x</code> should be replaced by <code>u</code>”.
@@ -604,7 +614,10 @@ export const BetaReductionLesson: React.FC<{
                   marginBottom: '8px',
                 }}
               >
-                {renderStringWithColoredParens(res.lambdaExprStr, { keyPrefix: `norm-prev-q-${idx}` })}
+                {renderStringWithColoredParens(res.lambdaExprStr, {
+                  keyPrefix: `norm-prev-q-${idx}`,
+                  colors: REDUCTION_PAREN_COLORS,
+                })}
               </div>
               <p style={{ marginBottom: '8px', fontSize: '14px', color: '#666' }}><strong>Answer:</strong></p>
               <div
@@ -615,11 +628,17 @@ export const BetaReductionLesson: React.FC<{
                   marginBottom: '8px',
                 }}
               >
-                {res.isCorrect && renderStringWithColoredParens(res.correctAnswerStr, { keyPrefix: `norm-prev-ans-${idx}` })}
+                {res.isCorrect && renderStringWithColoredParens(res.correctAnswerStr, {
+                  keyPrefix: `norm-prev-ans-${idx}`,
+                  colors: REDUCTION_PAREN_COLORS,
+                })}
                 {!res.isCorrect && (
                   <>
                     <p style={{ marginTop: '8px', marginBottom: 0, fontSize: '14px', fontFamily: 'inherit' }}>Correct answer:</p>
-                    {renderStringWithColoredParens(res.correctAnswerStr, { keyPrefix: `norm-prev-correct-${idx}` })}
+                    {renderStringWithColoredParens(res.correctAnswerStr, {
+                      keyPrefix: `norm-prev-correct-${idx}`,
+                      colors: REDUCTION_PAREN_COLORS,
+                    })}
                   </>
                 )}
               </div>
@@ -691,7 +710,10 @@ export const BetaReductionLesson: React.FC<{
                       overflowWrap: 'anywhere',
                     }}
                   >
-                    {renderStringWithColoredParens(String(betaStep.tPrimeNode), { keyPrefix: 'beta-tprime-token' })}
+                    {renderStringWithColoredParens(String(betaStep.tPrimeNode), {
+                      keyPrefix: 'beta-tprime-token',
+                      colors: REDUCTION_PAREN_COLORS,
+                    })}
                   </div>
                 </div>
               </div>
@@ -760,7 +782,10 @@ export const BetaReductionLesson: React.FC<{
               lineHeight: '2.2',
             }}
           >
-            {renderStringWithColoredParens(questions[currentIndex].answerStr, { keyPrefix: 'norm-ans' })}
+            {renderStringWithColoredParens(questions[currentIndex].answerStr, {
+              keyPrefix: 'norm-ans',
+              colors: REDUCTION_PAREN_COLORS,
+            })}
           </div>
         </div>
       )}

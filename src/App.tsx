@@ -93,9 +93,8 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
   const hasLessonCheck = (lessonId: LessonId): boolean => (answeredCorrectByLesson[lessonId] ?? 0) >= 4;
   const lessonCompletionMessage = (
     <>
-      Congradulations! You have finished this task! <br />
-      You can move onto the next one or keep going! <br />
-      If you have finished all tasks, it would be greatly appreciated if you took the ending survey!
+      Good Job!<br />If you are just completing the survey, you can move on to the next lesson. If you want to keep practicing, you can continue. <br />
+      When you've finished all lessons, please take the exit survey.
     </>
   );
   const completionMessage = (lessonId: LessonId) =>
@@ -245,31 +244,52 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
       <p style={{ marginBottom: '10px', fontSize: '14px', color: '#666' }}>
         User id: <strong>{identity.userId}</strong>
       </p>
-      <p style={{ marginBottom: '12px', color: '#444' }}>
-        <strong>Start here:</strong> open the Info menu (the <code>?</code> button) before anything else.
-      </p>
-      <div style={{ marginBottom: '18px', color: '#555' }}>
-        <p style={{ marginBottom: '8px' }}><strong>How to navigate this website:</strong></p>
-        <ul style={{ margin: '0 0 0 20px', padding: 0 }}>
-          <li>Open the Info menu (the <code>?</code> button) and read the general guidance before you start.</li>
-          <li>Pick a lesson using the cards below (each one practices a single skill).</li>
-          <li>Use the Help/Info panel (the ? button) in the top right the lesson content whenever you need a reminder.</li>
-          <li>In a lesson, focus on the highlighted part on the page, choose what the lesson asks for, then click <code>Submit</code>.</li>
-          <li>If you get stuck, click <code>Show Answer</code>, then continue with <code>Next Question</code>.</li>
-          <li>Use <code>← Back to Menu</code> to switch lessons.</li>
-        </ul>
-      </div>
-      <p style={{ marginBottom: '30px', color: '#666' }}>Choose a lesson to practice one core skill at a time:</p>
-      <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'center' }}>
+      <div style={{ marginTop: '-10px', marginBottom: '24px', display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+        <p style={{ margin: 0, fontSize: '18px', color: '#000', lineHeight: 1.35 }}>
+          If you finished taking the practice lessons below, please click here to take the exit survey.
+        </p>
         <button
           onClick={() => {
             window.open(endingSurveyUrl, '_blank', 'noopener,noreferrer');
           }}
-          style={{ fontSize: '18px', padding: '12px 24px' }}
+          aria-label="Post lessons survey"
+          title="Post lessons survey"
+          style={{
+            width: '52px',
+            height: '52px',
+            borderRadius: '9999px',
+            background: '#0D47A1',
+            color: '#fff',
+            border: 'none',
+            fontSize: '22px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
+            cursor: 'pointer',
+            flexShrink: 0,
+          }}
         >
-          Take ending survey
+          📄
         </button>
       </div>
+
+      <div style={{ marginBottom: '24px', color: '#000', fontSize: '16px', lineHeight: 1.5 }}>
+        <ul style={{ margin: '0 0 12px 20px', padding: 0 }}>
+          <li>Click on any of the boxes below to test and practice your knowledge of the given topic.</li>
+          <li>
+            This website keeps track of your progress. If you consistently answer questions correctly for a given topic,
+            a green checkmark will be shown in the corresponding box to highlight your progress.
+          </li>
+          <li>Open the Info menu (the <code>?</code> button) and read the general guidance before you start.</li>
+          <li>Pick a lesson using the cards below (each one practices a single skill).</li>
+          <li>Use the Help/Info panel (the ? button) in the top right the lesson content whenever you are stuck.</li>
+        </ul>
+      </div>
+      <p style={{ marginBottom: '14px', color: '#000' }}>Choose a lesson to practice one core skill at a time:</p>
+      <p style={{ marginTop: '-6px', marginBottom: '22px', fontSize: '13px', color: '#000', textAlign: 'center' }}>
+        ✅ means you're done with that lesson for the survey, but you can keep practicing anytime.
+      </p>
 
       <div className="lesson-menu">
         <div className="lesson-card" onClick={() => setCurrentLesson('application')}>
