@@ -1,7 +1,23 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  /* Subtle, friendly background so the content stands out */
+  background: radial-gradient(circle at top left, #e3f2fd 0%, #fce4ec 55%, #ffffff 100%);
+  color: #111;
+}
+
 .container {
   max-width: 1000px;
   margin: 50px auto;
   font-family: sans-serif;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 22px 22px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
 }
 
 input {
@@ -13,6 +29,21 @@ input {
 button {
   padding: 8px 16px;
   cursor: pointer;
+  border-radius: 10px;
+  border: 1px solid rgba(25, 118, 210, 0.35);
+  background: #1976d2;
+  color: #fff;
+  font-weight: 600;
+  transition: transform 0.06s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+button:hover:not(:disabled) {
+  background: #1565c0;
+  border-color: rgba(21, 101, 192, 0.55);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .response {
@@ -30,13 +61,21 @@ button {
 }
 
 .incorrect {
-  color: red;
+  color: #c62828;
   font-weight: bold;
+  background: rgba(198, 40, 40, 0.08);
+  border: 1px solid rgba(198, 40, 40, 0.2);
+  padding: 10px 14px;
+  border-radius: 10px;
 }
 
 .correct {
   color: #1a7f37;
   font-weight: bold;
+  background: rgba(26, 127, 55, 0.08);
+  border: 1px solid rgba(26, 127, 55, 0.2);
+  padding: 10px 14px;
+  border-radius: 10px;
 }
 
 .error-message {
@@ -56,13 +95,27 @@ button {
 }
 
 .lesson-card {
-  background: #f9f9f9;
+  background: linear-gradient(180deg, #ffffff 0%, #f5f9ff 100%);
   border: 2px solid #dcdcdc;
   border-radius: 12px;
   padding: 24px;
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  position: relative;
+}
+
+.lesson-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
+  background: linear-gradient(#2196f3, #42a5f5);
+  opacity: 0.9;
 }
 
 .lesson-card:hover {
@@ -74,12 +127,14 @@ button {
 .lesson-card h2 {
   margin: 0 0 12px 0;
   color: #333;
+  padding-left: 10px;
 }
 
 .lesson-card p {
   margin: 0;
   color: #666;
   line-height: 1.6;
+  padding-left: 10px;
 }
 
 /* Lambda expression rendering styles */
