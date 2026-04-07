@@ -288,7 +288,7 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
       </div>
       <p style={{ marginBottom: '14px', color: '#000' }}>Choose a lesson to practice one core skill at a time:</p>
       <p style={{ marginTop: '-6px', marginBottom: '22px', fontSize: '13px', color: '#000', textAlign: 'center' }}>
-        ✅ means you're done with that lesson for the survey, but you can keep practicing anytime.
+        ✅ means you have answered four questions correctly
       </p>
 
       <div className="lesson-menu">
@@ -301,13 +301,13 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
         <div className="lesson-card" onClick={() => setCurrentLesson('redex-highlight')}>
           <h2>Redex Highlighting {hasLessonCheck('redex-highlight') ? '✅' : ''}</h2>
           <p>
-            Learn β-redexes (the next thing you can simplify). A redex has the form <code>(λx.t) u</code>. You will highlight every redex in the expression.
+            Learn β-redexes. A redex has the form <code>(λx.t) t'</code>. You will highlight every redex in the expression.
           </p>
         </div>
         <div className="lesson-card" onClick={() => setCurrentLesson('variable-binding')}>
           <h2>Variable Binding {hasLessonCheck('variable-binding') ? '✅' : ''}</h2>
           <p>
-            Learn “who owns each variable”: every <code>λx</code> controls the <code>x</code> occurrences in its body. You will select which <code>λ</code> owns each variable occurrence (or choose “free variable” if it is not owned).
+            Learn to identify variable bindings. For each variable select the lambda binds it. If a variable is not bound to any lambda, select "free variable".
           </p>
         </div>
         <div className="lesson-card" onClick={() => setCurrentLesson('normal-order')}>
@@ -319,7 +319,7 @@ const AppContent: React.FC<{ identity: UserIdentity | null; identityLoading: boo
         <div className="lesson-card" onClick={() => setCurrentLesson('alpha-rename')}>
           <h2>Alpha Renaming {hasLessonCheck('alpha-rename') ? '✅' : ''}</h2>
           <p>
-            Learn α-renaming (changing bound variable names without changing meaning). You will use checkboxes in the highlighted redex to pick which variable needs renaming before substitution.
+            Learn α-renaming (changing variable names without changing meaning). You will use checkboxes in the highlighted redex to pick which variable needs renaming before substitution.
           </p>
         </div>
       </div>

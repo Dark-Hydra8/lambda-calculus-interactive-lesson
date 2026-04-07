@@ -515,22 +515,21 @@ export const VariableBindingLesson: React.FC<{
         <button onClick={onBack} style={{ marginBottom: '10px' }}>← Back to Menu</button>
       </div>
       <h1>Variable Binding</h1>
-      <div style={{ marginBottom: '20px', color: '#333' }}>
-        <p style={{ marginBottom: '8px' }}><strong>How this connects to lambda calculus:</strong></p>
+      <div style={{ marginBottom: '20px', color: '#333', fontFamily: 'inherit', fontSize: '16px' }}>
         <ul style={{ margin: '0 0 0 20px', padding: 0 }}>
           <li>
-            Each λ-abstraction <strong>λx. M</strong> gives the name <code>x</code> to some variables inside its body.
-            Informally: inside <code>M</code>, the <code>x</code>’s you see might belong to this λ.
+            Each λ-abstraction <strong>λx. M</strong> binds occurrences of <code>x</code> inside its body.
+            Generally inside <code>M</code>, the <code>x</code>’s you see might belong to this λ.
           </li>
           <li>
-            A variable occurrence is <strong>bound</strong> by the closest (most nearby) λ that uses the same name.
+            A variable occurrence is <strong>bound</strong> to the nearest (lowest level of nesting that still has this variable in its body) λ that uses the same name.
             If there is another λ with the same name inside, the inner one takes over for that inner part.
           </li>
           <li>
             If there is no such nearby λ, the occurrence is a <strong>free variable</strong>.
           </li>
           <li>
-            In this lesson, every λ is labeled with a small index (λ₁, λ₂, …). On each variable occurrence, use the dropdown to choose which λ it belongs to, or select <strong>free variable</strong>.
+            In this lesson, every λ is labeled with a small index (λ₁, λ₂, …). For each variable and parameter, use the dropdown to choose which λ it belongs to, or select <strong>free variable</strong>.
           </li>
           <li>
             Parameters themselves are not “bound to something else”, so you only choose dropdown values on variable occurrences, not on the λ-parameters.

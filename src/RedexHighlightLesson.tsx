@@ -688,23 +688,22 @@ export const RedexHighlightLesson: React.FC<{
         <button onClick={onBack} style={{ marginBottom: '10px' }}>← Back to Menu</button>
       </div>
       <h1>Identify the Redexes</h1>
-      <div style={{ marginBottom: '20px', color: '#555' }}>
-        <p style={{ marginBottom: '8px' }}><strong>How this connects to lambda calculus:</strong></p>
+      <div style={{ marginBottom: '20px', color: '#333', fontFamily: 'inherit', fontSize: '16px' }}>
         <ul style={{ margin: '0 0 0 20px', padding: 0 }}>
           <li>
             A <strong>β-redex</strong> is an application whose left side is a lambda abstraction:
-            <strong> (λx.t) u</strong>.
+            <strong> (λx.t) t'</strong>.
           </li>
           <li>
-            When you simplify <strong>(λx.t) u</strong>, you replace <code>x</code> inside <code>t</code> with <code>u</code>.
-            (Only the <code>x</code> that belong to that λ are replaced.)
+            When you simplify <strong>(λx.t) t'</strong>, you replace <code>x</code> inside the expression <code>t</code> with <code>t'</code>.
+            (Only the <code>x</code> that are bond to that λ are replaced.)
           </li>
           <li>
             Redexes can be nested. For example, in <code>(λx. x) ((λy. y) z)</code> there are two redexes:
             <code>(λy. y) z</code> (inside) and <code>(λx. x) ((λy. y) z)</code> (outside).
           </li>
           <li>
-            In each question, highlight text that covers each redex exactly, then click <strong>Confirm Selection</strong>.
+            In each question, highlight text that covers a redex exactly, then click <strong>Confirm Selection</strong>.
           </li>
           <li>
             When you have confirmed <strong>every</strong> redex in the expression, press <strong>Submit</strong>.

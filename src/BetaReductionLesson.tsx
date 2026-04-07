@@ -560,27 +560,28 @@ export const BetaReductionLesson: React.FC<{
         <button onClick={onBack} style={{ marginBottom: '10px' }}>← Back to Menu</button>
       </div>
       <h1>Beta Reduction</h1>
-      <div style={{ marginBottom: '20px', color: '#333' }}>
-        <p style={{ marginBottom: '8px' }}><strong>How this connects to lambda calculus:</strong></p>
+      <div style={{ marginBottom: '20px', color: '#333', fontFamily: 'inherit', fontSize: '16px' }}>
         <ul style={{ margin: '0 0 0 20px', padding: 0 }}>
           <li>
-            Beta reduction means: <strong>apply <code>λx.t</code> to <code>u</code> by replacing each <code>x</code> in <code>t</code> with <code>u</code>.</strong>{' '}
-            This means: wherever x appears in t if x is bound to that lambda function, replace that x with u.
+            Beta reduction means: <strong>apply <code>λx.t</code> to <code>t'</code> by replacing each <code>x</code> in <code>t</code> with <code>t'</code>.</strong>{' '}
+            This means: wherever x appears in t if x is bound to that lambda function, replace that x with t'.
           </li>
           <li>
-            If an <code>x</code> is controlled by a different <code>λ</code>, it is <strong>not</strong> replaced in this step.
+            If an <code>x</code> is bound by a different <code>λ</code>, it is <strong>not</strong> replaced in this step.
+          </li>
+          <li>
+            Example: <code>(λx. x y) z</code> reduces to <code>z y</code>, because we replace each occurrence of <code>x</code> bound to the outer λ in <code>x y</code> with <code>z</code>.
+          </li>
+          <li>
+            Example: <code>(λx.x λx. x y) z</code> reduces to <code>x λx. x y</code>, since the second x is bound to the second λ, so it is not replaced.
           </li>
           <li>
             In the question, the current β-redex is highlighted:
-            <span style={{ fontFamily: 'monospace' }}>λx</span> (blue), <span style={{ fontFamily: 'monospace' }}>t</span> (green), and <span style={{ fontFamily: 'monospace' }}>u</span> (red token).
+            <span style={{ fontFamily: 'monospace' }}> λx</span> (blue), <span style={{ fontFamily: 'monospace' }}>t</span> (green), and <span style={{ fontFamily: 'monospace' }}>u</span> (red).
           </li>
           <li>
-            Your task is to select every variable occurrence in <code>t</code> that represents a “where <code>x</code> should be replaced by <code>u</code>”.
+            Your task is to replace every variable occurrence <code>x</code> in <code>t</code> that should be replaced by <code>t'</code>.
             Click and drag the red argument box at the bottom to the variables that need to be replaced in the function body.
-          </li>
-          <li>
-            Submit when you have replaced all variables to reduce this one redex.
-            (After that, the lesson proceeds to the next redex in normal order.)
           </li>
         </ul>
       </div>

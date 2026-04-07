@@ -130,16 +130,21 @@ export const ApplicationLesson: React.FC<{
   }>>([]);
   const instructionPoints: React.ReactNode[] = [
     <>
-      An <strong>application</strong> in λ-calculus has the shape <code>M N</code> (“apply function <code>M</code> to argument <code>N</code>”).
+      An <strong>application</strong> in λ-calculus has the form <code>M N</code>.
     </>,
     <>
-      Applications associate to the left. For example, <code>x y z</code> means <code>(x y) z</code>.
+      Applications associate to the left. For example, <code>x y z</code> is the same as <code>(x y) z</code>.
     </>,
     <>
       In this lesson we highlight <strong>useful applications</strong>: applications where the <strong>left part is not itself an application</strong>.
-      <div style={{ marginTop: '6px', fontFamily: 'monospace' }}>
-        Example: in <code>x y z</code>, the useful application is <code>x y</code> (but <code>(x y) z</code> is not counted because its left part is an application).
-      </div>
+    </>,
+    <>
+      For instance, if the expression is <code>x y z</code>, you should only select <code>x y</code>. Do not select the full expression{' '}
+      <code>x y z</code>, because its left side is <code>x y</code>, which is already an application.
+    </>,
+    <>
+      In contrast, in <code>(λx. x x) x</code>, selecting the full expression is valid because the left side <code>(λx. x x)</code> is
+      an abstraction, not an application.
     </>,
     <>
       Choose one useful application by highighting the exact text for <code>M N</code>, then click <strong>Confirm Selection</strong>.
@@ -630,8 +635,7 @@ export const ApplicationLesson: React.FC<{
         <button onClick={onBack} style={{ marginBottom: '10px' }}>← Back to Menu</button>
       </div>
       <h1>Identify Useful Applications</h1>
-      <div style={{ marginBottom: '20px', color: '#333' }}>
-        <p style={{ marginBottom: '8px' }}><strong>How this connects to lambda calculus:</strong></p>
+      <div style={{ marginBottom: '20px', color: '#333', fontFamily: 'inherit', fontSize: '16px' }}>
         <ul style={{ margin: '0 0 0 20px', padding: 0 }}>
           {instructionPoints.map((point, idx) => (
             <li key={`app-inst-${idx}`} style={{ marginBottom: '4px' }}>{point}</li>

@@ -546,14 +546,13 @@ export const AlphaRenameLesson: React.FC<{
         <button onClick={onBack} style={{ marginBottom: '10px' }}>← Back to Menu</button>
       </div>
       <h1>Alpha Renaming</h1>
-      <div style={{ marginBottom: '20px', color: '#666' }}>
-        <p style={{ marginBottom: '8px' }}><strong>How this connects to lambda calculus:</strong></p>
+      <div style={{ marginBottom: '20px', color: '#333', fontFamily: 'inherit', fontSize: '16px' }}>
         <ul style={{ margin: '0 0 0 20px', padding: 0 }}>
           <li>
-            <strong>Alpha renaming</strong> (α-renaming) changes the <em>names</em> you see inside a λ, but it does <strong>not</strong> change the meaning.
+            <strong>Alpha renaming</strong> (α-renaming) changes the variable names inside a λ, but it does <strong>not</strong> change the meaning or structure of the expression. Each variable is still bound to the same lambda function.
           </li>
           <li>
-            It is needed because when we substitute (beta reduction), a name clash can make variables “switch meaning”.
+            It is needed because when we substitute (beta reduction), a name clash can cause a variable occurrence to refer to a different lambda expression.
             When the argument uses a name that already exists inside the redex, we rename one of the λ’s first.
           </li>
           <li>
@@ -561,15 +560,12 @@ export const AlphaRenameLesson: React.FC<{
           </li>
           <li>
             <strong>How to answer:</strong> Below there is a β-redex highlighted: function/parameter (blue), body (green), and argument (red). 
-            Use the checkboxes inside that redex to select the variable that needs renaming.
+            Use the checkboxes inside that redex to select the variables and function parameters that needs renaming.
           </li>
           <li>
             <strong>Example idea:</strong> In <code>(λx. λy. x y) y</code>, the argument is <code>y</code>.
             If we substitute without renaming, that <code>y</code> ends up under the inner <code>λy</code> and means something else.
             So we rename the inner λ first: <code>λy</code> → <code>λy'</code>.
-          </li>
-          <li>
-            You only need to answer using the highlighted redex on the top line.
           </li>
         </ul>
       </div>
