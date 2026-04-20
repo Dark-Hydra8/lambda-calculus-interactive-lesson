@@ -720,7 +720,7 @@ export const RedexHighlightLesson: React.FC<{
                 {incorrectCount > 0 ? (
                   <>
                     {incorrectCount} highlight{incorrectCount !== 1 ? 's' : ''}{' '}
-                    {incorrectCount === 1 ? 'was' : 'were'} not redexes.
+                    {incorrectCount === 1 ? 'was' : 'were'} not {incorrectCount === 1 ? 'a ' : ''}redex{incorrectCount !== 1 ? 'es' : ''}.
                   </>
                 ) : null}{' '}
                 There {redexCount === 1 ? 'is' : 'are'} {redexCount} redex{redexCount !== 1 ? 'es' : ''} in total. Remember to click

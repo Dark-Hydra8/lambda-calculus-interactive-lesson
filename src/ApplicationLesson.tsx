@@ -613,7 +613,7 @@ export const ApplicationLesson: React.FC<{
               {incorrectCount > 0 ? (
                 <>
                   {incorrectCount} highlight{incorrectCount !== 1 ? 's' : ''}{' '}
-                  {incorrectCount === 1 ? 'was' : 'were'} not useful applications.
+                  {incorrectCount === 1 ? 'was' : 'were'} not useful {incorrectCount === 1 ? 'a ' : ''}application{incorrectCount !== 1 ? 's' : ''}.
                 </>
               ) : null}{' '}
               There {appCount === 1 ? 'is' : 'are'} {appCount} useful application{appCount !== 1 ? 's' : ''} in total. Remember to click
