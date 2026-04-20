@@ -4,7 +4,7 @@ import { LambdaObject, Application } from './lambda_ir';
 import { random_lambda } from './random_lambda';
 import { Parser } from './parser';
 import { addSpacesAroundParens } from './displayParens';
-import { getParenPairMap, renderSegmentWithColoredParens, renderStringWithColoredParens, PAREN_COLORS } from './coloredParens';
+import { getParenPairMap, renderSegmentWithColoredParens, renderSegmentWithColoredParensAndVirtualBrackets, renderStringWithColoredParens, PAREN_COLORS } from './coloredParens';
 import { EASY, getDifficultyLevel, MEDIUM, type DifficultyLevel } from './api/lessonProgress';
 
 type Question = {
@@ -69,6 +69,17 @@ export function new_question(level: DifficultyLevel): LambdaObject {
 type ConfirmedRedex = {
   range: SelectionRange;
 };
+
+function redexSelectionFeedback(
+  selectedRanges: SelectionRange[],
+  correctRanges: SelectionRange[]
+): { missedCount: number; incorrectCount: number } {
+  const selectedRangeKeys = new Set(selectedRanges.map(r => `${r.start}-${r.end}`));
+  const correctRangeKeys = new Set(correctRanges.map(r => `${r.start}-${r.end}`));
+  const missedCount = correctRanges.filter(r => !selectedRangeKeys.has(`${r.start}-${r.end}`)).length;
+  const incorrectCount = selectedRanges.filter(r => !correctRangeKeys.has(`${r.start}-${r.end}`)).length;
+  return { missedCount, incorrectCount };
+}
 
 export const RedexHighlightLesson: React.FC<{
   userId: string;
@@ -161,6 +172,14 @@ export const RedexHighlightLesson: React.FC<{
       correctRangeKeys.has(`${range.start}-${range.end}`)
     );
     return allCorrectSelected && noIncorrectSelected && selectedRanges.length === correctRanges.length;
+  }, [isSubmitted, confirmedRedexes, redexToRangeMap]);
+
+  const redexFeedbackCounts = useMemo(() => {
+    if (!isSubmitted) return null;
+    return redexSelectionFeedback(
+      confirmedRedexes.map(cr => cr.range),
+      Array.from(redexToRangeMap.values())
+    );
   }, [isSubmitted, confirmedRedexes, redexToRangeMap]);
 
   const handleTextSelection = () => {
@@ -392,8 +411,7 @@ export const RedexHighlightLesson: React.FC<{
       });
     }
 
-    const bracketMap = new Map<number, Array<{ color: string; type: 'start' | 'end' }>>();
-    const redexColors = ['#28a745', '#007bff', '#ffc107', '#dc3545', '#6f42c1', '#20c997', '#fd7e14', '#e83e8c'];
+    const bracketMap = new Map<number, Array<{ type: 'start' | 'end' }>>();
 
     if (showAnswers) {
       currentQuestion.correctRedexes.forEach((redex, index) => {
@@ -405,11 +423,10 @@ export const RedexHighlightLesson: React.FC<{
           // non-space characters in displayStr itself.
           const startDisp = positionWithSpaces(text, range.start);
           const endDisp = positionWithSpaces(text, range.end - 1);
-          const color = redexColors[index % redexColors.length];
           if (!bracketMap.has(startDisp)) bracketMap.set(startDisp, []);
-          bracketMap.get(startDisp)!.push({ color, type: 'start' });
+          bracketMap.get(startDisp)!.push({ type: 'start' });
           if (!bracketMap.has(endDisp)) bracketMap.set(endDisp, []);
-          bracketMap.get(endDisp)!.push({ color, type: 'end' });
+          bracketMap.get(endDisp)!.push({ type: 'end' });
         }
       });
     }
@@ -458,59 +475,17 @@ export const RedexHighlightLesson: React.FC<{
           const groupText = text.substring(currentGroup.start, currentGroup.end);
           
           // Helper function to render text with colored brackets
-          const renderTextWithBrackets = (startIdx: number, endIdx: number) => {
-            const renderedChars: React.ReactNode[] = [];
-            for (let j = startIdx; j < endIdx; j++) {
-              const bracketInfos = bracketMap.get(j);
-              const char = text[j];
-              
-              if (bracketInfos && bracketInfos.length > 0) {
-                // Render all opening brackets first (bracket color independent of parens)
-                bracketInfos.forEach((bracketInfo, idx) => {
-                  if (bracketInfo.type === 'start') {
-                    renderedChars.push(
-                      <span key={`bracket-start-${j}-${idx}`} style={{ color: bracketInfo.color, fontWeight: 'bold', fontSize: '1.2em' }}>
-                        [
-                      </span>
-                    );
-                  }
-                });
-                // Render the character; still color ( ) by paren map so matching pairs match
-                if (char === '(' || char === ')') {
-                  const parenColor = (parenPairMap.get(j) ?? -1) >= 0 ? PAREN_COLORS[parenPairMap.get(j)! % PAREN_COLORS.length] : undefined;
-                  renderedChars.push(
-                    parenColor ? (
-                      <span key={`paren-${j}`} style={{ color: parenColor, fontWeight: 'bold' }}>{char}</span>
-                    ) : (
-                      <React.Fragment key={`char-${j}`}>{char}</React.Fragment>
-                    )
-                  );
-                } else {
-                  renderedChars.push(<React.Fragment key={`char-${j}`}>{char}</React.Fragment>);
-                }
-                // Render all closing brackets after
-                bracketInfos.forEach((bracketInfo, idx) => {
-                  if (bracketInfo.type === 'end') {
-                    renderedChars.push(
-                      <span key={`bracket-end-${j}-${idx}`} style={{ color: bracketInfo.color, fontWeight: 'bold', fontSize: '1.2em' }}>
-                        ]
-                      </span>
-                    );
-                  }
-                });
-              } else {
-                const parenColor = (parenPairMap.get(j) ?? -1) >= 0 ? PAREN_COLORS[parenPairMap.get(j)! % PAREN_COLORS.length] : undefined;
-                renderedChars.push(
-                  parenColor ? (
-                    <span key={`paren-${j}`} style={{ color: parenColor, fontWeight: 'bold' }}>{char}</span>
-                  ) : (
-                    char
-                  )
-                );
+          const renderTextWithBrackets = (startIdx: number, endIdx: number) =>
+            renderSegmentWithColoredParensAndVirtualBrackets(
+              text.substring(startIdx, endIdx),
+              startIdx,
+              {
+                pairMap: parenPairMap,
+                bracketMarkers: bracketMap,
+                colors: PAREN_COLORS,
+                keyPrefix: `redex-br-${startIdx}-${endIdx}`,
               }
-            }
-            return renderedChars;
-          };
+            );
 
           if (currentGroup.highlights.length === 0) {
             // No highlights - render with colored brackets if needed
@@ -719,15 +694,40 @@ export const RedexHighlightLesson: React.FC<{
         <div key={idx} className="response">
           <p><strong>Expression:</strong> {renderStringWithColoredParens(addSpacesAroundParens(res.questionStr).displayStr, { keyPrefix: `res-${idx}` })}</p>
           <p>
-            {res.isCorrect ? (
+            {(() => {
+              const correctRanges = res.correctRedexes
+                .map(redex => {
+                  const found = res.question.object_ranges().find(([, obj]) => obj === redex);
+                  if (!found) return null;
+                  return { start: found[0].start, end: found[0].end };
+                })
+                .filter((range): range is SelectionRange => range !== null);
+              const { missedCount, incorrectCount } = redexSelectionFeedback(res.selectedRedexes, correctRanges);
+              const redexCount = res.correctRedexes.length;
+              return res.isCorrect ? (
               <span className="correct">
-                Correct! You found all {res.correctRedexes.length} redex{res.correctRedexes.length !== 1 ? 'es' : ''}.
+                ✓ Correct! You found all {redexCount} redex{redexCount !== 1 ? 'es' : ''}.
               </span>
             ) : (
               <span className="incorrect">
-                Incorrect. You selected {res.selectedRedexes.length} redex{res.selectedRedexes.length !== 1 ? 'es' : ''}.
+                ✗ Incorrect.{' '}
+                {missedCount > 0 ? (
+                  <>
+                    You missed {missedCount} redex{missedCount !== 1 ? 'es' : ''}
+                    {incorrectCount > 0 ? '; ' : '. '}
+                  </>
+                ) : null}
+                {incorrectCount > 0 ? (
+                  <>
+                    {incorrectCount} highlight{incorrectCount !== 1 ? 's' : ''}{' '}
+                    {incorrectCount === 1 ? 'was' : 'were'} not redexes.
+                  </>
+                ) : null}{' '}
+                There {redexCount === 1 ? 'is' : 'are'} {redexCount} redex{redexCount !== 1 ? 'es' : ''} in total. Remember to click
+                the &quot;Confirm Selection&quot; button after highlighting each redex.
               </span>
-            )}
+            );
+            })()}
           </p>
         </div>
       ))}
@@ -783,9 +783,26 @@ export const RedexHighlightLesson: React.FC<{
               <p style={{ marginBottom: '12px' }}>
                 {isCorrect ? (
                   <span className="correct">✓ Correct. All redexes found.</span>
-                ) : (
-                  <span className="incorrect">✗ Some redexes are incorrect. Try again or show answer.</span>
-                )}
+                ) : redexFeedbackCounts ? (
+                  <span className="incorrect">
+                    ✗ Incorrect.{' '}
+                    {redexFeedbackCounts.missedCount > 0 ? (
+                      <>
+                        You missed {redexFeedbackCounts.missedCount} redex
+                        {redexFeedbackCounts.missedCount !== 1 ? 'es' : ''}
+                        {redexFeedbackCounts.incorrectCount > 0 ? '; ' : '. '}
+                      </>
+                    ) : null}
+                    {redexFeedbackCounts.incorrectCount > 0 ? (
+                      <>
+                        {redexFeedbackCounts.incorrectCount} highlight
+                        {redexFeedbackCounts.incorrectCount !== 1 ? 's' : ''}{' '}
+                        {redexFeedbackCounts.incorrectCount === 1 ? 'was' : 'were'} not redexes.
+                      </>
+                    ) : null}{' '}
+                    Try again or show the answer.
+                  </span>
+                ) : null}
               </p>
             )}
             <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>

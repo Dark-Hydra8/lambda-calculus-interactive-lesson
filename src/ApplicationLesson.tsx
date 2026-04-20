@@ -3,7 +3,7 @@ import './styles.css';
 import { LambdaObject, Variable, Application, Lambda } from './lambda_ir';
 import { random_lambda } from './random_lambda';
 import { addSpacesAroundParens } from './displayParens';
-import { getParenPairMap, renderSegmentWithColoredParens, PAREN_COLORS } from './coloredParens';
+import { getParenPairMap, renderSegmentWithColoredParens, renderSegmentWithColoredParensAndVirtualBrackets, PAREN_COLORS } from './coloredParens';
 import { getDifficultyLevel, EASY, MEDIUM, type DifficultyLevel, HARD } from './api/lessonProgress';
 
 type Question = {
@@ -540,76 +540,31 @@ export const ApplicationLesson: React.FC<{
     const origStr = response.questionStr;
     const { displayStr: text, originalToDisplay: respO2D } = addSpacesAroundParens(origStr);
     const respParenMap = getParenPairMap(text);
-    const colors = ['#28a745', '#007bff', '#ffc107', '#dc3545', '#6f42c1', '#20c997', '#fd7e14', '#e83e8c'];
     let renderedChars: React.ReactNode[] = [];
     if (showBrackets) {
       const sortedApps = [...response.correctApplications].sort((a, b) => {
         if (a.start !== b.start) return a.start - b.start;
         return b.end - a.end;
       });
-      const bracketMap = new Map<
-        number,
-        Array<{ color: string; type: 'start' | 'end'; bodyIndex: number }>
-      >();
-      sortedApps.forEach((ar, bodyIndex) => {
+      const bracketMap = new Map<number, Array<{ type: 'start' | 'end' }>>();
+      sortedApps.forEach((ar) => {
         // ar.start / ar.end are measured in non-space characters on the
         // original question string. Map them directly into the display string,
         // which may have extra spaces around parentheses, by counting
         // non-space characters in the display string itself.
         const startDisp = positionWithSpaces(text, ar.start);
         const endDisp = positionWithSpaces(text, ar.end - 1);
-        const color = colors[bodyIndex % colors.length];
         if (!bracketMap.has(startDisp)) bracketMap.set(startDisp, []);
-        bracketMap.get(startDisp)!.push({ color, type: 'start', bodyIndex });
+        bracketMap.get(startDisp)!.push({ type: 'start' });
         if (!bracketMap.has(endDisp)) bracketMap.set(endDisp, []);
-        bracketMap.get(endDisp)!.push({ color, type: 'end', bodyIndex });
+        bracketMap.get(endDisp)!.push({ type: 'end' });
       });
-      const bracketStack: Array<{ color: string }> = [];
-      for (let i = 0; i < text.length; i++) {
-        const bracketInfos = bracketMap.get(i);
-        const char = text[i];
-        if (bracketInfos && bracketInfos.length > 0) {
-          const openingBrackets = bracketInfos.filter(b => b.type === 'start');
-          const closingBrackets = bracketInfos.filter(b => b.type === 'end');
-          for (let idx = 0; idx < openingBrackets.length; idx++) {
-            const info = openingBrackets[idx];
-            bracketStack.push({ color: info.color });
-            renderedChars.push(
-              <span key={`bracket-start-${i}-${idx}`} style={{ color: info.color, fontWeight: 'bold', fontSize: '1.2em' }}>
-                [
-              </span>
-            );
-          }
-          const parenColor = (respParenMap.get(i) ?? -1) >= 0 ? PAREN_COLORS[respParenMap.get(i)! % PAREN_COLORS.length] : undefined;
-          renderedChars.push(
-            parenColor ? (
-              <span key={`char-${i}`} style={{ color: parenColor, fontWeight: 'bold' }}>{char}</span>
-            ) : (
-              char
-            )
-          );
-          const closingBracketsSorted = [...closingBrackets].sort((a, b) => b.bodyIndex - a.bodyIndex);
-          for (let idx = 0; idx < closingBracketsSorted.length; idx++) {
-            const info = closingBracketsSorted[idx];
-            const matchingBracket = bracketStack.pop();
-            const colorToUse = matchingBracket ? matchingBracket.color : info.color;
-            renderedChars.push(
-              <span key={`bracket-end-${i}-${idx}`} style={{ color: colorToUse, fontWeight: 'bold', fontSize: '1.2em' }}>
-                ]
-              </span>
-            );
-          }
-        } else {
-          const parenColor = (respParenMap.get(i) ?? -1) >= 0 ? PAREN_COLORS[respParenMap.get(i)! % PAREN_COLORS.length] : undefined;
-          renderedChars.push(
-            parenColor ? (
-              <span key={`char-${i}`} style={{ color: parenColor, fontWeight: 'bold' }}>{char}</span>
-            ) : (
-              char
-            )
-          );
-        }
-      }
+      renderedChars = renderSegmentWithColoredParensAndVirtualBrackets(text, 0, {
+        pairMap: respParenMap,
+        bracketMarkers: bracketMap,
+        colors: PAREN_COLORS,
+        keyPrefix: `prev-br-${index}`,
+      });
     } else {
       renderedChars = renderSegmentWithColoredParens(text, 0, {
         pairMap: respParenMap,

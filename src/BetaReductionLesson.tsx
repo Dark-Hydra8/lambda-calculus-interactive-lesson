@@ -81,6 +81,8 @@ let questions: Question[] = [];
 type SubmitResult = {
   isCorrect: boolean;
   selectedXOccurrences: string[];
+  correctlyReplacedCount: number;
+  shouldNotHaveBeenReplacedCount: number;
 };
 
 export const BetaReductionLesson: React.FC<{
@@ -492,6 +494,8 @@ export const BetaReductionLesson: React.FC<{
     const isCorrect =
       selectedXOccurrences.size === targetIdsSet.size &&
       Array.from(selectedXOccurrences).every(id => targetIdsSet.has(id));
+    const correctlyReplacedCount = Array.from(selectedXOccurrences).filter(id => targetIdsSet.has(id)).length;
+    const shouldNotHaveBeenReplacedCount = Array.from(selectedXOccurrences).filter(id => !targetIdsSet.has(id)).length;
 
     if (isCorrect) onAnsweredCorrect?.();
     if (isCorrect && !hadShownAnswerForCurrentQuestion) onCorrectWithoutShowAnswer?.();
@@ -499,6 +503,8 @@ export const BetaReductionLesson: React.FC<{
     setSubmitResult({
       isCorrect,
       selectedXOccurrences: Array.from(selectedXOccurrences),
+      correctlyReplacedCount,
+      shouldNotHaveBeenReplacedCount,
     });
     setIsSubmitted(true);
   };
@@ -726,7 +732,12 @@ export const BetaReductionLesson: React.FC<{
               {submitResult.isCorrect ? (
                 <span className="correct">✓ Correct.</span>
               ) : (
-                <span className="incorrect">✗ Incorrect.</span>
+                <span className="incorrect">
+                  ✗ Incorrect. {submitResult.correctlyReplacedCount} variable
+                  {submitResult.correctlyReplacedCount !== 1 ? 's were' : ' was'} correctly replaced, and{' '}
+                  {submitResult.shouldNotHaveBeenReplacedCount} variable
+                  {submitResult.shouldNotHaveBeenReplacedCount !== 1 ? 's should' : ' should'} not have been replaced.
+                </span>
               )}
             </p>
           )}

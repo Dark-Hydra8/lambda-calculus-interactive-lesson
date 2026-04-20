@@ -210,3 +210,75 @@ export function renderSegmentWithColoredParensAndBrackets(
   }
   return out;
 }
+
+type VirtualBracketMarker = {
+  type: 'start' | 'end';
+};
+
+/**
+ * Render a segment with depth-colored parentheses from pairMap and virtual
+ * square-bracket markers. Brackets use the same depth-based palette logic as
+ * parentheses.
+ */
+export function renderSegmentWithColoredParensAndVirtualBrackets(
+  segmentStr: string,
+  segmentStart: number,
+  options: ColoredParensOptions & {
+    bracketMarkers?: Map<number, VirtualBracketMarker[]>;
+    bracketFontSize?: string;
+  }
+): React.ReactNode[] {
+  const {
+    pairMap,
+    bracketMarkers,
+    colors = PAREN_COLORS,
+    keyPrefix = 'cp',
+    bracketFontSize = '1.2em',
+  } = options;
+
+  const out: React.ReactNode[] = [];
+  const bracketDepthStack: number[] = [];
+
+  for (let i = 0; i < segmentStr.length; i++) {
+    const globalIndex = segmentStart + i;
+    const markers = bracketMarkers?.get(globalIndex) ?? [];
+    const openingCount = markers.filter(m => m.type === 'start').length;
+    const closingCount = markers.filter(m => m.type === 'end').length;
+
+    for (let markerIdx = 0; markerIdx < openingCount; markerIdx++) {
+      const depth = bracketDepthStack.length;
+      bracketDepthStack.push(depth);
+      const color = colors[depth % colors.length];
+      out.push(
+        <span key={`${keyPrefix}-vb-open-${globalIndex}-${markerIdx}`} style={{ color, fontWeight: 'bold', fontSize: bracketFontSize }}>
+          [
+        </span>
+      );
+    }
+
+    const parenDepth = pairMap.get(globalIndex);
+    if (parenDepth !== undefined) {
+      const color = colors[parenDepth % colors.length];
+      out.push(
+        <span key={`${keyPrefix}-char-${globalIndex}`} style={{ color, fontWeight: 'bold' }}>
+          {segmentStr[i]}
+        </span>
+      );
+    } else {
+      out.push(<React.Fragment key={`${keyPrefix}-char-${globalIndex}`}>{segmentStr[i]}</React.Fragment>);
+    }
+
+    for (let markerIdx = 0; markerIdx < closingCount; markerIdx++) {
+      const depth = bracketDepthStack.pop();
+      const fallbackDepth = bracketDepthStack.length;
+      const color = colors[(depth ?? fallbackDepth) % colors.length];
+      out.push(
+        <span key={`${keyPrefix}-vb-close-${globalIndex}-${markerIdx}`} style={{ color, fontWeight: 'bold', fontSize: bracketFontSize }}>
+          ]
+        </span>
+      );
+    }
+  }
+
+  return out;
+}

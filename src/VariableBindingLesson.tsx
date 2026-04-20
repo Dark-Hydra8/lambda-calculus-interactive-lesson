@@ -113,6 +113,24 @@ function PreviousQuestionItem({ response, index }: { response: ResponseRecord; i
     findVariableOccurrencesWithBinding(response.question, [], '', occurrences, { count: 0 });
     return { lambdasInOrder, lambdaToNumber, variableOccurrences: occurrences };
   }, [response.question]);
+  const responseFeedback = useMemo(() => {
+    const dropdownOccurrences = variableOccurrences.filter(
+      occ => !occ.path.includes('.param') && !occ.path.startsWith('param-')
+    );
+    const correctAnswers: Record<string, string> = {};
+    dropdownOccurrences.forEach(occ => {
+      correctAnswers[occ.id] = occ.boundToLambda
+        ? `λ${lambdaToNumber.get(occ.boundToLambda)!}`
+        : 'free variable';
+    });
+    const wrongCount = dropdownOccurrences.filter(
+      occ => (response.selections[occ.id] || '') !== correctAnswers[occ.id]
+    ).length;
+    return {
+      wrongCount,
+      totalCount: dropdownOccurrences.length,
+    };
+  }, [variableOccurrences, lambdaToNumber, response.selections]);
 
   const elements: React.ReactNode[] = [];
   let occurrenceIndex = 0;
@@ -228,7 +246,10 @@ function PreviousQuestionItem({ response, index }: { response: ResponseRecord; i
         {response.isCorrect ? (
           <span className="correct">✓ Correct</span>
         ) : (
-          <span className="incorrect">✗ Incorrect</span>
+          <span className="incorrect">
+            ✗ Incorrect. {responseFeedback.wrongCount} binding
+            {responseFeedback.wrongCount !== 1 ? 's were' : ' was'} wrong.
+          </span>
         )}
       </p>
     </div>
@@ -303,6 +324,17 @@ export const VariableBindingLesson: React.FC<{
       occ => (selections[occ.id] || '') === correctAnswers[occ.id]
     );
   }, [isSubmitted, selections, occurrencesWithDropdown, correctAnswers]);
+
+  const bindingFeedbackCounts = useMemo(() => {
+    if (!isSubmitted) return null;
+    const wrongCount = occurrencesWithDropdown.filter(
+      occ => (selections[occ.id] || '') !== correctAnswers[occ.id]
+    ).length;
+    return {
+      wrongCount,
+      totalCount: occurrencesWithDropdown.length,
+    };
+  }, [isSubmitted, occurrencesWithDropdown, selections, correctAnswers]);
 
   const handleSubmit = () => {
     onSubmit?.();
@@ -572,9 +604,13 @@ export const VariableBindingLesson: React.FC<{
           <p style={{ marginBottom: '12px' }}>
             {isCorrect ? (
               <span className="correct">✓ Correct. All bindings are correct.</span>
-            ) : (
-              <span className="incorrect">✗ Some bindings are incorrect. Check the dropdowns and try again or show answer.</span>
-            )}
+            ) : bindingFeedbackCounts ? (
+              <span className="incorrect">
+                ✗ Incorrect. {bindingFeedbackCounts.wrongCount} binding
+                {bindingFeedbackCounts.wrongCount !== 1 ? 's are' : ' is'} wrong out of{' '}
+                {bindingFeedbackCounts.totalCount}. Check the dropdowns and try again or show answer.
+              </span>
+            ) : null}
           </p>
         )}
 
