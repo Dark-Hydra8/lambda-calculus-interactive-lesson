@@ -61,7 +61,7 @@ export function new_question(level: DifficultyLevel): LambdaObject {
       lambda.redexes().length === target
       || lambda.redexes().length === target + 1
     )
-    || String(lambda).length >= length
+    || String(lambda).length > length
   );
   return lambda;
 }
@@ -312,7 +312,6 @@ export const RedexHighlightLesson: React.FC<{
     
     const isCorrect = allCorrectSelected && noIncorrectSelected && selectedRanges.length === correctRanges.length;
 
-    if (isCorrect) onAnsweredCorrect?.();
     if (isCorrect && !hadShownAnswerForCurrentQuestion) onCorrectWithoutShowAnswer?.();
     setCurrentSelection(null);
     setIsSubmitted(true);

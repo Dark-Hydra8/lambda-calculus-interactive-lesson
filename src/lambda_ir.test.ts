@@ -169,6 +169,34 @@ test("test the eq function of LambdaObject children classes", () => {
 		new Variable("x")
 	);
 	expect(obj1.eq(obj5, null)).toEqual(true);
+
+	let obj6 = new Parser(
+		"(λx.λy.x y) (λy.y)\n" +
+		"λy.(λy.y) y"
+	).parse_input() as LambdaObject[];
+	obj6[0] = norm_ord_reduce(obj6[0]) as LambdaObject;
+	expect(String(obj6[0])).toEqual(String(obj6[1]));
+
+	let obj7 = new Parser(
+		"(λx.λy.x y) (λx.y)\n" +
+		"λy'.(λx.y) y'"
+	).parse_input() as LambdaObject[];
+	obj7[0] = norm_ord_reduce(obj7[0]) as LambdaObject;
+	expect(String(obj7[0])).toEqual(String(obj7[1]));
+
+	let obj8 = new Parser(
+		"(λx.λy.x y) (λx.y')\n" +
+		"λy.(λx.y') y"
+	).parse_input() as LambdaObject[];
+	obj8[0] = norm_ord_reduce(obj8[0]) as LambdaObject;
+	expect(String(obj8[0])).toEqual(String(obj8[1]));
+
+	let obj9 = new Parser(
+		"(λx.λy.y y' y'' y''' y'''' x) (λx.y)\n" +
+		"λy'''''. y''''' y' y'' y''' y'''' λx.y"
+	).parse_input() as LambdaObject[];
+	obj9[0] = norm_ord_reduce(obj9[0]) as LambdaObject;
+	expect(String(obj7[0])).toEqual(String(obj7[1]));
 });
 
 test("ensure that parentesis are placed correctly", () => {

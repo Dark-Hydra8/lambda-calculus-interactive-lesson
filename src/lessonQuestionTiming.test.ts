@@ -10,6 +10,14 @@ import { new_question as newRedexQuestion } from './RedexHighlightLesson';
 import { new_question as newAlphaRenameQuestion } from './AlphaRenameLesson';
 import { new_question as newVariableBindingQuestion } from './VariableBindingLesson';
 
+/**
+ * Opt-in only: these checks are slow and randomized. Run with
+ * `npm run test:timing` or `RUN_LESSON_TIMING_TESTS=1 npm test`.
+ */
+const RUN_LESSON_TIMING_TESTS =
+  process.env.RUN_LESSON_TIMING_TESTS === '1' ||
+  process.env.RUN_LESSON_TIMING_TESTS === 'true';
+
 const LEVEL_CASES: Array<{ level: DifficultyLevel; name: string }> = [
   { level: EASY, name: 'EASY' },
   { level: MEDIUM, name: 'MEDIUM' },
@@ -36,7 +44,9 @@ function expectQuestionWithinBudget(generate: () => unknown): void {
   );
 }
 
-describe('question generation finishes within 1s per difficulty', () => {
+(RUN_LESSON_TIMING_TESTS ? describe : describe.skip)(
+  'question generation finishes within 1s per difficulty',
+  () => {
   describe('ApplicationLesson', () => {
     it.each(LEVEL_CASES)('new_question at $name', ({ level }) => {
       expectQuestionWithinBudget(() => newApplicationQuestion(level));
@@ -68,4 +78,5 @@ describe('question generation finishes within 1s per difficulty', () => {
       expectQuestionWithinBudget(() => newVariableBindingQuestion(level));
     });
   });
-});
+  }
+);

@@ -1,0 +1,33 @@
+section,version,survey answer,is correct,count
+1,1,used,TRUE,19
+1,1,used,FALSE,12
+1,1,not used,TRUE,10
+1,1,not used,FALSE,4
+1,1,not aware,TRUE,0
+1,1,not aware,FALSE,1
+1,1,didn’t answer,TRUE,3
+1,1,didn’t answer,FALSE,2
+1,2,used,TRUE,13
+1,2,used,FALSE,12
+1,2,not used,TRUE,11
+1,2,not used,FALSE,3
+1,2,not aware,TRUE,3
+1,2,not aware,FALSE,3
+1,2,didn’t answer,TRUE,2
+1,2,didn’t answer,FALSE,2
+2,1,used,TRUE,17
+2,1,used,FALSE,9
+2,1,not used,TRUE,15
+2,1,not used,FALSE,6
+2,1,not aware,TRUE,1
+2,1,not aware,FALSE,1
+2,1,didn’t answer,TRUE,0
+2,1,didn’t answer,FALSE,1
+2,2,used,TRUE,16
+2,2,used,FALSE,11
+2,2,not used,TRUE,8
+2,2,not used,FALSE,4
+2,2,not aware,TRUE,3
+2,2,not aware,FALSE,4
+2,2,didn’t answer,TRUE,2
+2,2,didn’t answer,FALSE,2

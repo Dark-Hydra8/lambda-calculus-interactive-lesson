@@ -75,6 +75,19 @@ function usefulApplicationRanges(question: LambdaObject): ApplicationRange[] {
   return ranges;
 }
 
+/** Counts useful applications not selected, and confirmed highlights that are not useful applications. */
+function applicationSelectionFeedback(
+  selectedRanges: SelectionRange[],
+  applicationRanges: ApplicationRange[]
+): { missedCount: number; incorrectCount: number } {
+  const correctRanges = applicationRanges.map(ar => ({ start: ar.start, end: ar.end }));
+  const selectedRangeKeys = new Set(selectedRanges.map(r => `${r.start}-${r.end}`));
+  const correctRangeKeys = new Set(correctRanges.map(r => `${r.start}-${r.end}`));
+  const missedCount = correctRanges.filter(r => !selectedRangeKeys.has(`${r.start}-${r.end}`)).length;
+  const incorrectCount = selectedRanges.filter(r => !correctRangeKeys.has(`${r.start}-${r.end}`)).length;
+  return { missedCount, incorrectCount };
+}
+
 export function new_question(level: DifficultyLevel): LambdaObject {
   const maxApplications = level === EASY ? 4 : level === MEDIUM ? 6 : 8;
   const minLength = level === EASY ? 3 : level === MEDIUM ? 4 : 5;
@@ -185,8 +198,10 @@ export const ApplicationLesson: React.FC<{
 
   const handleTextSelection = () => {
     const selection = window.getSelection();
+    console.log('selection', selection);
     if (!selection || selection.rangeCount === 0) return;
     const range = selection.getRangeAt(0);
+    console.log('range', range);
     if (!textRef.current || !textRef.current.contains(range.commonAncestorContainer)) return;
     const textContent = textRef.current.textContent || '';
     const selectedText = range.toString();
@@ -509,6 +524,14 @@ export const ApplicationLesson: React.FC<{
     return allCorrectSelected && noIncorrectSelected && selectedRanges.length === correctRanges.length;
   }, [isSubmitted, confirmedSelections, applicationRanges]);
 
+  const applicationFeedbackCounts = useMemo(() => {
+    if (!isSubmitted) return null;
+    return applicationSelectionFeedback(
+      confirmedSelections.map(c => c.range),
+      applicationRanges
+    );
+  }, [isSubmitted, confirmedSelections, applicationRanges]);
+
   const renderPreviousQuestion = (
     response: (typeof responses)[0],
     index: number,
@@ -595,6 +618,10 @@ export const ApplicationLesson: React.FC<{
       });
     }
     const appCount = response.correctApplications.length;
+    const { missedCount, incorrectCount } = applicationSelectionFeedback(
+      response.selectedRanges,
+      response.correctApplications
+    );
     return (
       <div
         key={`previous-${index}`}
@@ -621,7 +648,21 @@ export const ApplicationLesson: React.FC<{
             </span>
           ) : (
             <span className="incorrect">
-              ✗ Incorrect. You selected {response.selectedRanges.length} application{response.selectedRanges.length !== 1 ? 's' : ''}, but there {appCount === 1 ? 'is' : 'are'} {appCount} correct application{appCount !== 1 ? 's' : ''}. Remember to click the "Confirm Selection" button after highlighting each application.
+              ✗ Incorrect.{' '}
+              {missedCount > 0 ? (
+                <>
+                  You missed {missedCount} useful application{missedCount !== 1 ? 's' : ''}
+                  {incorrectCount > 0 ? '; ' : '. '}
+                </>
+              ) : null}
+              {incorrectCount > 0 ? (
+                <>
+                  {incorrectCount} highlight{incorrectCount !== 1 ? 's' : ''}{' '}
+                  {incorrectCount === 1 ? 'was' : 'were'} not useful applications.
+                </>
+              ) : null}{' '}
+              There {appCount === 1 ? 'is' : 'are'} {appCount} useful application{appCount !== 1 ? 's' : ''} in total. Remember to click
+              the &quot;Confirm Selection&quot; button after highlighting each application.
             </span>
           )}
         </p>
@@ -730,9 +771,26 @@ export const ApplicationLesson: React.FC<{
             <p style={{ marginBottom: '12px' }}>
               {isCorrect ? (
                 <span className="correct">✓ Correct. All applications identified.</span>
-              ) : (
-                <span className="incorrect">✗ Some applications are incorrect. Try again or show answer.</span>
-              )}
+              ) : applicationFeedbackCounts ? (
+                <span className="incorrect">
+                  ✗ Incorrect.{' '}
+                  {applicationFeedbackCounts.missedCount > 0 ? (
+                    <>
+                      You missed {applicationFeedbackCounts.missedCount} useful application
+                      {applicationFeedbackCounts.missedCount !== 1 ? 's' : ''}
+                      {applicationFeedbackCounts.incorrectCount > 0 ? '; ' : '. '}
+                    </>
+                  ) : null}
+                  {applicationFeedbackCounts.incorrectCount > 0 ? (
+                    <>
+                      {applicationFeedbackCounts.incorrectCount} highlight
+                      {applicationFeedbackCounts.incorrectCount !== 1 ? 's' : ''}{' '}
+                      {applicationFeedbackCounts.incorrectCount === 1 ? 'was' : 'were'} not useful applications.
+                    </>
+                  ) : null}{' '}
+                  Try again or show the answer.
+                </span>
+              ) : null}
             </p>
           )}
           <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>

@@ -90,18 +90,6 @@ class VariableName {
 	}
 }
 
-/** Inclusive/exclusive index range (used for redex spans in the pretty-printed string). */
-export class Range {
-	public start: number;
-	public end: number;
-
-	/** @param start Inclusive start. @param end Exclusive end. */
-	public constructor(start: number, end: number) {
-		this.start = start;
-		this.end = end;
-	}
-}
-
 /**
  * Tracks bound-variable renamings when comparing two lambda bodies for alpha-equivalence:
  * stacks of `VariableName` per symbol for the left and right terms being compared.
@@ -211,8 +199,8 @@ export abstract class LambdaObject {
 	public abstract copy() : LambdaObject;
 	/** All β-redexes (applications whose left child is a lambda) in this subtree. */
 	public abstract redexes() : Application[];
-	/** Character ranges of redexes in the pretty-printed string for this subtree. */
-	public abstract redex_ranges() : Range[];
+	/** Character ranges of redexes in the no-space layout string for this subtree (same index space as {@link object_ranges}). */
+	public abstract redex_ranges() : IndexRange[];
 	/** Leftmost-outermost redex in this subtree, if any. */
 	public abstract norm_ord_redex() : Application | null;
 	/** Substitutes `replacement` for free occurrences of `variable` (capture-avoiding where implemented). */
@@ -233,6 +221,7 @@ export abstract class LambdaObject {
 	public abstract object_ranges() : [IndexRange, LambdaObject][]; // Does not include spaces
 	/** All variable nodes in this subtree (for collection / search). */
 	public abstract all_variables() : Variable[];
+	/** Deep copy of this node and descendants. */
 }
 
 /** Binary internal node: either an application or a lambda (abstracted as left/right children). */
@@ -356,16 +345,7 @@ export class Lambda extends LambdaTree {
 			let parameter = (this.left as Variable).get_symbol();
 			// alpha renaming
 			if (replacement.get_free_vars().has(parameter)) {
-				let new_parameter = parameter;
-				do {
-					new_parameter = `${new_parameter}'`;
-				} while (replacement.get_free_vars().has(new_parameter));
-				let old_variable = this.left as Variable;
-				let new_variable = new Variable(new_parameter);
-				this.left = new_variable;
-				new_variable.set_parent(this);
-				this.right.replace(old_variable, new_variable);
-				this.reload_free_vars();
+				this.alpha_rename(variable, replacement.get_free_vars());
 			}
 			super.replace(variable, replacement);
 		}
@@ -412,13 +392,13 @@ export class Lambda extends LambdaTree {
 	}
 
 	/** Redex spans inside the body, shifted to positions in the full `λx. M` string. */
-	public redex_ranges() : Range[] {
+	public redex_ranges() : IndexRange[] {
 		const body = this.get_body();
 		const start =
 			String(this).replace(/\s/g, '').length - String(body).replace(/\s/g, '').length;
-		const redexes: Range[] = [];
+		const redexes: IndexRange[] = [];
 		for (let redex of body.redex_ranges()) {
-			redexes.push(new Range(redex.start + start, redex.end + start));
+			redexes.push(new IndexRange(redex.start + start, redex.end + start));
 		}
 		return redexes;
 	}
@@ -533,12 +513,12 @@ export class Application extends LambdaTree {
 		if (!(this.left instanceof Lambda)) {
 			throw new Error("Attempted to reduce a non redex");
 		}
-		let t_prime = this.left.call(this.right);
+		let result = this.left.call(this.right);
 		if (this.parent !== null) {
-			this.parent.replace_child(this, t_prime);
+			this.parent.replace_child(this, result);
 			this.parent.reload_free_vars();
 		}
-		return t_prime;
+		return result;
 	}
 
 	/** This node if it is a redex, plus redexes from left and right (left-first order). */
@@ -552,13 +532,13 @@ export class Application extends LambdaTree {
 	}
 
 	/** Character ranges for each redex in this application’s pretty-printed form. */
-	public redex_ranges() : Range[] {
+	public redex_ranges() : IndexRange[] {
 		const pairs = this.object_ranges();
-		const result: Range[] = [];
+		const result: IndexRange[] = [];
 		for (const redex of this.redexes()) {
 			const found = pairs.find(([, obj]) => obj === redex);
 			if (found) {
-				result.push(new Range(found[0].start, found[0].end));
+				result.push(new IndexRange(found[0].start, found[0].end));
 			}
 		}
 		return result;
@@ -732,7 +712,7 @@ export class Variable extends LambdaObject {
 	}
 
 	/** No redex ranges inside a bare variable. */
-	public redex_ranges() : Range[] {
+	public redex_ranges() : IndexRange[] {
 		return [];
 	}
 

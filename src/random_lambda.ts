@@ -4,12 +4,12 @@ export function random_variable(variables: string[]) : Variable {
 	return new Variable(variables[Math.floor(variables.length * Math.random())]);
 }
 
-export function random_lambda(variables: string[], depth: number = 10, app_less_likely: boolean = false) : LambdaObject {
+export function random_lambda(variables: string[], depth: number = 10) : LambdaObject {
 	let result: LambdaObject;
 	if (depth <= 0) {
 		return random_variable(variables);
 	}
-	let rand_max = app_less_likely ? 2.75 : 3;
+	let rand_max = 3;
 	switch (Math.floor(rand_max * Math.random())) {
 		case 0:
 			result = random_variable(variables);
@@ -67,11 +67,9 @@ export function random_with_unique_lambdas(variables: string[], depth: number = 
 			} while (body.get_free_vars().size === 0);
 			if (!body.get_free_vars().has(parameter.get_symbol())) {
 				let free_vars: Variable[] = body.get_free_vars_list();
-				// console.log("body", String(body), "free vars", free_vars, "free set", body.get_free_vars());
 				let to_replace: Variable = free_vars[Math.floor(free_vars.length * Math.random())];
 				to_replace.set_symbol(parameter.get_symbol());
 			}
-			// console.log("body", String(body), "has parameter", parameter.get_symbol(), "free vars", body.get_free_vars());
 			result = new Lambda(parameter, body);
 			break;
 		default:

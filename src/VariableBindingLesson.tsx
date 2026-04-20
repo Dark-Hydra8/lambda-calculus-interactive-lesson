@@ -86,7 +86,7 @@ export function new_question(level: DifficultyLevel): LambdaObject {
     bound_variables = variables.length;
   } while (
     bound_variables < bound_var_count
-    || String(lambda).length > length
+    || String(lambda).length >= length
     || total_variables > 7
     || bound_variables / total_variables < 0.25
     || bound_variables / total_variables > 0.95

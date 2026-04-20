@@ -23,6 +23,7 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
+    "test:timing": "RUN_LESSON_TIMING_TESTS=1 react-scripts test lessonQuestionTiming.test.ts",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {

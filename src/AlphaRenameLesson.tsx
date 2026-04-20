@@ -4,7 +4,6 @@ import { LambdaObject, Variable, Application, Lambda, norm_ord_reduce, all_varia
 import { getParenPairMap, PAREN_COLORS, renderStringWithColoredParens } from './coloredParens';
 import { random_with_unique_lambdas, random_variable } from './random_lambda';
 import { difference } from './SetOperations';
-import { Parser } from './parser';
 import { EASY, getDifficultyLevel, MEDIUM, HARD, type DifficultyLevel } from './api/lessonProgress';
 
 type Question = {
@@ -91,62 +90,40 @@ export function new_question(level: DifficultyLevel): Application {
   // Depth 9 (7 + HARD) often thrashes in the acceptance loop; cap HARD at 8 like MEDIUM for reliable latency.
   const caseMax = level === EASY ? 3 : 6;
   const maxLength = level === EASY ? 20 : level === MEDIUM ? 35 : 50;
-  let is_accepted: (lambda_object: Application) => boolean;
   const base_vars = new Set(['v', 'w', 'x', 'y', 'z']);
+  let arg_len_check: (argument_length: number) => boolean;
+  let rename_check: (renaming: boolean) => boolean;
   switch (Math.floor(caseMax * Math.random())) {
     case 0: // Short argument with no renaming
-      is_accepted = (lambda_object: Application) => {
-        const length = String(lambda_object).length;
-        const argument_length = String(lambda_object.get_right()).length;
-        const renaming = hasRenaming(lambda_object, base_vars);
-        const param_count = parameter_count(lambda_object);
-        const depth = max_redex_parameter_lambda_depth(lambda_object);
-        const reduced_length = String(norm_ord_reduce(lambda_object.copy())).length;
-        const accepted = length < maxLength && param_count > 0 && argument_length < 10 && !renaming && depth >= 3 && reduced_length < 45;
-        return accepted;
-      };
+      arg_len_check = (argument_length: number) => argument_length < 10;
+      rename_check = (renaming: boolean) => !renaming;
       break;
     case 1:
     case 2: // Short argument with renaming (1 and 2 fall through to same handler)
-      is_accepted = (lambda_object: Application) => {
-        const length = String(lambda_object).length;
-        const argument_length = String(lambda_object.get_right()).length;
-        const renaming = hasRenaming(lambda_object, base_vars);
-        const param_count = parameter_count(lambda_object);
-        const depth = max_redex_parameter_lambda_depth(lambda_object);
-        const reduced_length = String(norm_ord_reduce(lambda_object.copy())).length;
-        const accepted = length < maxLength && param_count > 0 && argument_length < 10 && renaming && depth >= 3 && reduced_length < 45;
-        return accepted;
-      };
+      arg_len_check = (argument_length: number) => argument_length < 10;
+      rename_check = (renaming: boolean) => renaming;
       break;
     case 3: // Long argument with no renaming
-      is_accepted = (lambda_object: Application) => {
-        const length = String(lambda_object).length;
-        const argument_length = String(lambda_object.get_right()).length;
-        const renaming = hasRenaming(lambda_object, base_vars);
-        const param_count = parameter_count(lambda_object);
-        const depth = max_redex_parameter_lambda_depth(lambda_object);
-        const reduced_length = String(norm_ord_reduce(lambda_object.copy())).length;
-        const accepted = length < maxLength && param_count > 0 && argument_length >= 10 && !renaming && depth >= 3 && reduced_length < 45;
-        return accepted;
-      };
+      arg_len_check = (argument_length: number) => argument_length >= 10;
+      rename_check = (renaming: boolean) => !renaming;
       break;
     case 4:
     case 5: // Long argument with renaming (4 and 5 fall through to same handler)
-      is_accepted = (lambda_object: Application) => {
-        const length = String(lambda_object).length;
-        const argument_length = String(lambda_object.get_right()).length;
-        const renaming = hasRenaming(lambda_object, base_vars);
-        const param_count = parameter_count(lambda_object);
-        const depth = max_redex_parameter_lambda_depth(lambda_object);
-        const reduced_length = String(norm_ord_reduce(lambda_object.copy())).length;
-        const accepted = length < maxLength && param_count > 0 && argument_length >= 10 && renaming && depth >= 3 && reduced_length < 45;
-        return accepted;
-      };
+      arg_len_check = (argument_length: number) => argument_length >= 10;
+      rename_check = (renaming: boolean) => renaming;
       break;
     default:
       throw new Error("branch unreachable");
   }
+  const is_accepted = (lambda_object: Application) => {
+    const length = String(lambda_object).length;
+    const argument_length = String(lambda_object.get_right()).length;
+    const renaming = hasRenaming(lambda_object, base_vars);
+    const param_count = parameter_count(lambda_object);
+    const depth = max_redex_parameter_lambda_depth(lambda_object);
+    const reduced_length = String(norm_ord_reduce(lambda_object.copy())).length;
+    return length <= maxLength && param_count > 0 && arg_len_check(argument_length) && rename_check(renaming) && depth >= 3 && reduced_length < 45;
+  };
   let lambda: Application;
   // let i = 0;
   do {

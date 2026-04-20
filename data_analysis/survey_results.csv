@@ -1,0 +1,85 @@
+Timestamp,"User ID from the lambda calculus website
+(automatically filled in)","Have you taken this interactive lesson in lambda calculus?
+(automatically filled in)",How well do you know lambda calculus?,"What does the following expression reduce to after one beta reduction (with renaming if needed)?
+(λx. x (λx. y x)) z","How many redexes are in the following expression:
+( λx.λz. ( λz.y ) x ) ( w ( λw.y ) λx.w )","What is the parameter in the following expression:
+(λa.b)c","Does the following expression need to have a variable(s) renamed before it can be reduced:
+(λy.λv.λw.v y) λv.v y",Do you have any general comments or feedback that you wish to share?
+3/26/2026 14:21:17,b43b391a,No,I have heard of lambda calculus,z (λx. y x),2,c,No,
+4/2/2026 14:04:40,b43b391a,No,I know it very well,z (λx. y x),2,a,No,
+4/8/2026 11:32:27,nolan,No,I know it very well,z (λx. y x),0,b,Yes,
+4/8/2026 13:21:53,b43b3954,No,I have limited familiarity with lambda calculus,z (λx. y x),2,c,Yes,
+4/8/2026 13:21:53,b43b3956,No,I am familiar with lambda calculus,x (λx. y x),3,b,Yes,
+4/8/2026 13:26:01,b43b3963,No,I am familiar with lambda calculus,z (λx. y x),1,c,No,
+4/8/2026 13:28:02,b43b3965,No,I have limited familiarity with lambda calculus,z (λx. y x),1,b,Yes,
+4/8/2026 13:28:06,b43b3970,No,I do not know what lambda calculus is,z (λx. y x),2,b,Yes,no
+4/8/2026 13:28:57,b43b3961,No,I am familiar with lambda calculus,z (λx. y x),2,c,No,n/a
+4/8/2026 13:30:44,b43b3971,No,I am familiar with lambda calculus,z (λx. y x),3,c,Yes,
+4/8/2026 13:31:49,b43b396a,No,I know it very well,z (λx. y x),2,c,No,More question and more examples will help me nail down the concept
+4/8/2026 13:40:44,b43b3977,No,I am familiar with lambda calculus,z (λx. y x),1,b,Yes,
+4/8/2026 13:43:57,b43b3979,No,I have limited familiarity with lambda calculus,z (λx. y x),0,a,Yes,
+4/8/2026 13:49:39,b43b397c,No,I have limited familiarity with lambda calculus,z (λx. y x),3,c,Yes,N/A
+4/8/2026 13:49:44,b43b397b,No,I am familiar with lambda calculus,z (λx. y x),2,(λa.b),Yes,
+4/8/2026 13:56:10,b43b397d,No,I am familiar with lambda calculus,z (λx. y x),1,c,No,
+4/8/2026 14:02:46,b43b3963,Yes,I am familiar with lambda calculus,z (λx. y x),2,c,No,
+4/8/2026 14:05:32,b43b3975,Yes,I have limited familiarity with lambda calculus,z (λx. y x),3,a,No,"Looks great! I have been going at it for a while and im getting the same questions, a bigger question bank would be nice, or even eee120 has there own helper website for their stuff but they have levels to it that increase difficulty, maybe in some future you can add this? just the increase difficulty would be nice. "
+4/8/2026 14:08:32,b43b3983,No,I am familiar with lambda calculus,z (λx. y x),1,b,No,
+4/8/2026 14:11:35,b43b3984,No,I am familiar with lambda calculus,z (λx. y x),2,b,Yes,
+4/8/2026 14:16:19,b43b3978,Yes,I am familiar with lambda calculus,z (λx. y x),2,a,No,
+4/8/2026 14:45:12,b43b398a,No,I have heard of lambda calculus,z (λx. y x),0,c,Yes,
+4/8/2026 14:47:16,b43b3984,Yes,I am familiar with lambda calculus,z (λx. y x),3,c,Yes,
+4/8/2026 14:49:19,b43b3961,Yes,I am familiar with lambda calculus,z (λx. y x),2,c,No,It would be cool to see an explanation for why the answer is correct/incorrect. 
+4/8/2026 14:49:46,b43b398c,No,I have limited familiarity with lambda calculus,z (λx. y x),2,c,Yes,
+4/8/2026 15:02:20,b43b398f,No,I am familiar with lambda calculus,z (λx. y x),1,b,Yes,
+4/8/2026 15:03:02,b43b397d,Yes,I am familiar with lambda calculus,z (λx. y x),1,a,No,
+4/8/2026 15:09:43,b43b3965,Yes,I have limited familiarity with lambda calculus,z (λx. y z),2,a,Yes,
+4/8/2026 15:13:52,b43b3993,No,I know it very well,z (λx. y x),2,a,No,
+4/8/2026 15:15:44,b43b3994,No,I have limited familiarity with lambda calculus,z (λx. y x),2,a,Yes,
+4/8/2026 15:33:54,b43b3993,Yes,I know it very well,z (λx. y x),2,a,No,
+4/8/2026 15:35:35,b43b3998,No,I have limited familiarity with lambda calculus,z (λx. y x),2,c,Yes,
+4/8/2026 15:49:31,b43b3994,Yes,I am familiar with lambda calculus,z (λx. y x),2,a,Yes,
+4/8/2026 16:13:53,b43b399f,No,I have limited familiarity with lambda calculus,z (λx. y x),1,c,Yes,
+4/8/2026 16:15:03,b43b39a1,No,I have limited familiarity with lambda calculus,z (λx. y x),1,a,Yes,
+4/8/2026 16:27:39,b43b39a3,No,I am familiar with lambda calculus,z (λx. y x),2,c,No,
+4/8/2026 16:28:30,b43b39a4,No,I am familiar with lambda calculus,z (λx. y x),2,b,Yes,
+4/8/2026 17:23:10,b43b39a3,Yes,I am familiar with lambda calculus,z (λx. y x),2,b,Yes,
+4/8/2026 17:52:32,b43b39ac,No,I am familiar with lambda calculus,z (λx. y x),2,a,No,help me learn please
+4/8/2026 18:03:58,b43b39ae,No,I have limited familiarity with lambda calculus,z (λx. y x),3,(λa.b),No,
+4/8/2026 18:25:06,b43b39b1,No,I am familiar with lambda calculus,z (λx. y x),3,c,Yes,
+4/8/2026 18:34:51,b43b39ab,No,I am familiar with lambda calculus,z (λx. y x),2,b,Yes,
+4/8/2026 18:39:48,b43b3992,Yes,I am familiar with lambda calculus,z (λx. y x),2,a,Yes,
+4/8/2026 18:44:05,b43b39b9,No,I have limited familiarity with lambda calculus,z (λx. y x),0,a,Yes,
+4/8/2026 18:47:04,b43b39b5,No,I am familiar with lambda calculus,z (λx. y z),2,b,No,
+4/8/2026 19:15:26,b43b39b1,Yes,I am familiar with lambda calculus,z (λx. y x),2,a,Yes,
+4/8/2026 19:27:11,b43b39b0,Yes,I am familiar with lambda calculus,z (λx. y x),3,c,Yes,
+4/8/2026 19:27:53,b43b39bf,No,I am familiar with lambda calculus,z (λx. y x),2,b,Yes,N/A
+4/8/2026 19:39:46,b43b39ae,Yes,I am familiar with lambda calculus,z (λx. y x),3,a,Yes,
+4/8/2026 19:59:51,b43b39c4,No,I am familiar with lambda calculus,z (λx. y x),2,a,No,I don't
+4/8/2026 21:44:25,b43b397b,Yes,I know it very well,z (λx. y x),2,a,Yes,"For the redex answers, show both the current view of the answers and a highlighted view as well."
+4/8/2026 21:54:51,b43b39c3,No,I have limited familiarity with lambda calculus,z (λx. y x),1,c,Yes,
+4/8/2026 22:41:34,b43b3990,Yes,I know it very well,z (λx. y x),2,b,No,Very useful for getting fast at identifying redex's
+4/8/2026 22:58:01,b43b39d1,No,I have limited familiarity with lambda calculus,x (λz. y z),3,(λa.b),Yes,
+4/8/2026 23:02:28,b43b39c8,Yes,I have limited familiarity with lambda calculus,z (λx. y x),2,b,Yes,"Could you include something like a tutorial section for each part, kinda like going step by step on how to do each section, in case we forget/mistaken on how to do it?
+Also, could you expand this to other CSE340 subjects?
+Thank you so much for creating this. "
+4/8/2026 23:05:19,b43b399d,No,I have limited familiarity with lambda calculus,z (λx. y x),2,a,Yes,
+4/8/2026 23:34:44,b43b399f,Yes,I am familiar with lambda calculus,z (λx. y x),3,a,Yes,Thanks for this. It helped my exam prep. Good luck
+4/8/2026 23:57:37,b43b39d4,No,I am familiar with lambda calculus,z (λx. y x),1,c,Yes,
+4/9/2026 0:08:49,b43b39d6,No,I have limited familiarity with lambda calculus,z (λx. y x),2,c,No,
+4/9/2026 0:13:07,b43b398a,Yes,I am familiar with lambda calculus,z (λx. y x),2,c,No,Great tool!
+4/9/2026 0:14:17,b43b39d7,No,I am familiar with lambda calculus,z (λx. y z),1,(λa.b),Yes,
+4/9/2026 0:18:14,b43b39d8,No,I have limited familiarity with lambda calculus,z (λx. y z),3,b,No,
+4/9/2026 0:21:19,b43b39d9,No,I have limited familiarity with lambda calculus,z (λx. y x),2,a,Yes,no
+4/9/2026 0:33:27,b43b39db,No,I am familiar with lambda calculus,z (λx. y x),1,b,Yes,
+4/9/2026 1:06:15,b43b39dd,No,I am familiar with lambda calculus,z (λx. y x),2,b,Yes,
+4/9/2026 6:48:48,b43b39a7,Yes,I am familiar with lambda calculus,z (λx. y x),2,c,Yes,N/A
+4/9/2026 6:49:53,b43b39e6,No,I have limited familiarity with lambda calculus,z (λx. y x),2,a,No,
+4/9/2026 7:10:54,b43b39e6,Yes,I am familiar with lambda calculus,z (λx. y x),2,a,No,"I like the color coding on the parentheses, make it much easier to find bodies of abstraction and other things. "
+4/9/2026 8:05:38,b43b39ec,No,I have heard of lambda calculus,z (λx. y x),4,c,Yes,
+4/9/2026 8:19:20,b43b39be,No,I am familiar with lambda calculus,z (λx. y x),2,a,No,
+4/9/2026 11:25:12,b43b39f3,No,I am familiar with lambda calculus,z (λx. y x),2,(λa.b),Yes,
+4/10/2026 14:09:30,b43b39f,No,I am familiar with lambda calculus,z (λx. y x),2,(λa.b),Yes,N/A
+4/11/2026 15:37:46,b43b3a03,No,I have heard of lambda calculus,x (λx. y x),4,c,Yes,I need to get a lesson from you. 
+4/12/2026 10:42:08,b43b3a09,Yes,I have heard of lambda calculus,z (λx. y x),2,a,Yes,I have a long way to go but the lesson seemed to help a lot.
+4/13/2026 17:39:55,b43b3a07,No,I am familiar with lambda calculus,z (λx. y x),1,a,Yes,
+4/13/2026 18:31:07,b43b3a07,Yes,I am familiar with lambda calculus,z (λx. y x),2,a,No,This helped a lot for my exam tomorrow
